@@ -97,15 +97,9 @@ async function installRelease(sourceRoot: string, releasePath: string): Promise<
   const staging = `${releasePath}.staging-${process.pid}`;
   await rm(staging, { recursive: true, force: true });
   await mkdir(staging, { recursive: true, mode: 0o700 });
-  for (const entry of [
-    "dist",
-    "compatibility",
-    "plugin",
-    "docs",
-    "package.json",
-    "README.md",
-    "LICENSE",
-  ]) {
+  // The shim only ever runs dist/cli.js against the compatibility manifest;
+  // everything else would be dead weight duplicated into every release.
+  for (const entry of ["dist", "compatibility", "package.json", "LICENSE"]) {
     await cp(join(sourceRoot, entry), join(staging, entry), {
       recursive: true,
       force: false,
