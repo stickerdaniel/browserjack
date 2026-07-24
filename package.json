@@ -1,15 +1,23 @@
 {
   "name": "browserjack",
-  "version": "0.1.0",
-  "description": "Use the ChatGPT browser extension from Claude Code. A non-invasive MCP bridge to the locally installed OpenAI browser runtime on macOS.",
+  "version": "0.2.0",
+  "description": "A local macOS MCP bridge that lets Claude Code and other MCP clients reuse OpenAI's installed Codex browser runtime.",
   "keywords": [
-    "browser",
     "browser-automation",
+    "browser-bridge",
     "chatgpt",
+    "chrome",
+    "chromium",
     "claude-code",
+    "codex",
     "computer-use",
+    "helium",
     "macos",
-    "mcp"
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "node-repl",
+    "openai"
   ],
   "homepage": "https://github.com/stickerdaniel/browserjack#readme",
   "bugs": {
@@ -26,8 +34,6 @@
   },
   "files": [
     "dist",
-    "src",
-    "plugin",
     "compatibility",
     "docs",
     "README.md",
@@ -39,8 +45,7 @@
     "darwin"
   ],
   "cpu": [
-    "arm64",
-    "x64"
+    "arm64"
   ],
   "type": "module",
   "publishConfig": {
@@ -48,15 +53,17 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "check": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint --type-aware",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "test": "npm run build && node --test test/*.test.mjs",
     "doctor": "npm run build --silent && node dist/cli.js doctor",
-    "pack:check": "npm run build && npm pack --dry-run",
-    "verify": "npm run check && npm run lint && npm run format:check && npm test"
+    "prepack": "npm run build",
+    "pack:check": "sh scripts/pack-check.sh",
+    "verify:versions": "node scripts/verify-versions.mjs",
+    "verify": "npm run check && npm run lint && npm run format:check && npm run verify:versions && npm test"
   },
   "devDependencies": {
     "@types/node": "26.1.1",
@@ -66,6 +73,6 @@
     "typescript": "7.0.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }
