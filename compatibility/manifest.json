@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-23",
+  "entries": [
+    {
+      "bundleId": "com.openai.codex",
+      "appVersion": "26.715.72359",
+      "pluginVersion": "26.715.72359",
+      "teamId": "2DC432GLL2",
+      "architectures": ["arm64"],
+      "browserClientSha256": "d0b55a8f9e8e7e9c88421416ea4ce9542c302abf43aa7fc871be4553ea70dd26"
+    }
+  ]
+}
