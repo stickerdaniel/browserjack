@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+bridge="$HOME/Library/Application Support/browserjack/bin/browserjack"
+
+if [ ! -x "$bridge" ]; then
+  printf '%s\n' 'ChatGPT browser runtime is not installed. Run /browserjack:setup.' >&2
+  exit 2
+fi
+
+exec "$bridge" run

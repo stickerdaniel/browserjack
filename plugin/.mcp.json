@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "browserjack": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/browserjack-mcp"
+    }
+  }
+}
