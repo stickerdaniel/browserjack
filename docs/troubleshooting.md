@@ -3,14 +3,14 @@
 Start with a cold inspection:
 
 ```bash
-browserjack doctor --json
+npx browserjack doctor --json
 ```
 
-Doctor inspects ChatGPT.app, its code signature, the bundled runtime, the Chrome plugin, the cached browser client, the compatibility entry, and the Chrome and Helium native-host manifests. `browserjack status` separately reports whether the local installation itself is healthy.
+Doctor inspects ChatGPT.app, its code signature, the bundled runtime, the Chrome plugin, the cached browser client, the compatibility entry, and the Chrome and Helium native-host manifests. `npx browserjack status` separately reports whether the local installation itself is healthy. (After setup, the installed shim also runs as plain `browserjack` from `~/Library/Application Support/browserjack/bin` if you add it to your `PATH`; the examples here use `npx`, which always works.)
 
 ## Doctor fails the compatibility check
 
-Browserjack refuses unknown ChatGPT.app builds by design. This is expected right after a ChatGPT.app update. Update Browserjack to a release that supports your build rather than trusting an unreviewed local hash. If no release supports it yet, open a compatibility issue with your `doctor --json` output.
+Browserjack refuses unknown ChatGPT.app builds by design. This is expected right after a ChatGPT.app update. Update Browserjack to a release that supports your build. If no release supports it yet, open a compatibility issue with your `doctor --json` output — redact your macOS username from the paths before posting.
 
 ## A connected server stops working after a ChatGPT.app update
 
@@ -18,7 +18,7 @@ A running `run` process can survive an app update, so a connected status from an
 
 ## status reports a broken Node.js path
 
-The installed shim pins the exact Node.js executable used at install time. A Homebrew or nvm upgrade can move or remove it. Run `browserjack setup` (or `browserjack update`) again to rewrite the shim against the current Node.js.
+The installed shim pins the exact Node.js executable used at install time. A Homebrew or nvm upgrade can move or remove it. Run `npx browserjack setup` (or `npx browserjack update`) again to rewrite the shim against the current Node.js.
 
 ## No browser backends are connected
 

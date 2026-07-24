@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "browserjack",
   "displayName": "Browserjack",
-  "version": "0.1.0",
-  "description": "Use the ChatGPT browser extension from Claude Code via the locally installed OpenAI browser runtime (macOS)",
+  "version": "0.2.0",
+  "description": "Use OpenAI's locally installed Codex browser runtime from Claude Code (macOS)",
   "author": {
     "name": "Daniel Sticker"
   },

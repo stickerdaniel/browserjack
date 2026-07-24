@@ -9,7 +9,7 @@ npm install
 npm run verify   # typecheck + lint + format check + tests
 ```
 
-`npm run verify` must pass before every pull request. CI runs the same pipeline on macOS with Node.js 20, 22, and 24.
+`npm run verify` must pass before every pull request. CI runs tests and CLI smoke checks on macOS with Node.js 22 and 24, plus quality and package checks on Node.js 24.
 
 Individual steps:
 
