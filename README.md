@@ -4,10 +4,10 @@
 [![npm](https://img.shields.io/npm/v/browserjack.svg)](https://www.npmjs.com/package/browserjack)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Browserjack lets Claude Code and other MCP clients reuse the browser runtime that OpenAI's ChatGPT.app already installed on your Mac. If the ChatGPT/Codex Chrome extension is set up, your agent gets a persistent Node.js REPL that drives your real, signed-in Chrome or Helium profile through OpenAI's own signed components. Nothing extra is injected into the browser and no second automation extension is installed.
+Browserjack lets Claude Code and other MCP clients reuse the browser runtime that OpenAI's ChatGPT.app already installed on your Mac: a persistent Node.js REPL driving your real, signed-in Chrome or Helium profile. Nothing is injected into the browser and no second automation extension is installed.
 
 > [!WARNING]
-> Experimental. Browserjack relies on undocumented, build-specific OpenAI interfaces and can control authenticated browser sessions. Every launch verifies OpenAI's code signatures; new ChatGPT.app builds pass a one-time runtime self-test before first use. Treat it as a developer tool, not a supported product.
+> Experimental developer tool. Built on undocumented OpenAI interfaces; controls authenticated browser sessions.
 
 Local stdio · zero runtime dependencies · npm provenance · OpenAI signature checks · fail-closed compatibility
 
@@ -77,7 +77,7 @@ npx browserjack setup --client plugin --scope user
 
 ## Compatibility
 
-Security checks are build-independent and run on every launch: ChatGPT.app and native-host signatures against OpenAI's Team ID, and a byte-for-byte match between the cached browser client and the one inside the signed app bundle. Build compatibility is separate: builds covered by the bundled manifest start immediately, and an unknown build (for example right after a ChatGPT.app update) triggers a one-time runtime self-test — a cold start with a real browser handshake — before the first launch. A passing build is recorded locally and starts without delay afterwards; a failing one is blocked, which means OpenAI changed the interface and Browserjack needs an update. If a new build misbehaves in ways the handshake cannot catch, open a compatibility issue with your `doctor --json` output (redact your username in paths first).
+After a ChatGPT.app update, the first start runs a one-time self-test of the new build (a cold start with a real browser handshake); a passing build is recorded and starts instantly afterwards, a failing one stays blocked until a Browserjack update. Signature and cache checks run on every launch regardless. If a new build misbehaves beyond what the handshake catches, open a compatibility issue with your `doctor --json` output (redact your username in paths first).
 
 ## Architecture
 
@@ -86,25 +86,11 @@ Security checks are build-independent and run on every launch: ChatGPT.app and n
   <img alt="Browserjack architecture: an MCP client talks over stdio to Browserjack, a thin launcher and proxy that verifies OpenAI's signatures before every launch, then spawns the OpenAI-signed codex sandbox running node_repl, which reaches the real Chrome or Helium profile through OpenAI's native host and extension. Page content flows only up to the MCP client." src="docs/assets/architecture.svg">
 </picture>
 
-```text
-MCP client (e.g. Claude Code)
-  → browserjack (stdio/JSONL metadata proxy)
-  → OpenAI-signed codex sandbox
-  → OpenAI node_repl and browser-client
-  → official OpenAI native host
-  → official ChatGPT/Codex extension
-  → Chrome or Helium profile
-```
-
 The editable source is [docs/assets/architecture.tldr](docs/assets/architecture.tldr) (open on [tldraw.com](https://www.tldraw.com)).
 
 ## Security and privacy
 
-Every launch verifies ChatGPT.app and the configured native hosts against OpenAI's code-signing identity, and the runtime starts inside OpenAI's `codex sandbox` with read-only filesystem access from `/` (needed for reliable startup and user-selected uploads) and write access limited to `CODEX_HOME` and temporary directories. Details, trust boundaries, and known limitations: [docs/security.md](docs/security.md).
-
-Browserjack has no telemetry and does not log browser content, cookies, tokens, or form data. What the connected MCP client requests does enter that client's conversation: [docs/privacy.md](docs/privacy.md).
-
-Vulnerability reports: [SECURITY.md](SECURITY.md).
+The diagram above shows the checks each launch runs; the runtime is sandboxed with writes limited to `CODEX_HOME` and temp directories. Browserjack has no telemetry and does not log browser content, cookies, tokens, or form data — what the connected MCP client requests enters that client's conversation. Details: [docs/security.md](docs/security.md) · [docs/privacy.md](docs/privacy.md) · vulnerability reports via [SECURITY.md](SECURITY.md).
 
 ## Environment
 
