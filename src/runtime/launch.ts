@@ -41,15 +41,10 @@ function sanitizedParentEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-// Every security check runs here, for every build: app and native-host
-// signatures, cache byte-identity, containment. Build *compatibility* is
-// established separately (manifest entry or one-time self-test); it gates
-// nothing security-relevant.
-export async function createRuntimeLaunch(appOverride?: string): Promise<RuntimeLaunch> {
-  const runtime = await discoverRuntime(appOverride);
-  assertCachedClientConsistent(runtime);
-  await assertNativeHostsTrusted(runtime);
-
+// Pure assembly of the sandbox invocation from an already-verified runtime.
+// Kept side-effect free so the env and argument invariants stay testable
+// without a real ChatGPT.app.
+export function composeLaunch(runtime: DiscoveredRuntime): RuntimeLaunch {
   return {
     command: runtime.codexPath,
     args: [
@@ -77,4 +72,15 @@ export async function createRuntimeLaunch(appOverride?: string): Promise<Runtime
     },
     runtime,
   };
+}
+
+// Every security check runs here, for every build: app and native-host
+// signatures, cache byte-identity, containment. Build *compatibility* is
+// established separately (manifest entry or one-time self-test); it gates
+// nothing security-relevant.
+export async function createRuntimeLaunch(appOverride?: string): Promise<RuntimeLaunch> {
+  const runtime = await discoverRuntime(appOverride);
+  assertCachedClientConsistent(runtime);
+  await assertNativeHostsTrusted(runtime);
+  return composeLaunch(runtime);
 }
