@@ -78,7 +78,7 @@ export async function runDoctor(appOverride?: string): Promise<DoctorReport> {
     },
     {
       id: "node",
-      status: Number(process.versions.node.split(".")[0]) >= 20 ? "pass" : "failure",
+      status: Number(process.versions.node.split(".")[0]) >= 22 ? "pass" : "failure",
       summary: `Node.js ${process.versions.node}`,
       details: { executable: process.execPath },
     },

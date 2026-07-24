@@ -1,12 +1,22 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { isJsonObject } from "../lib/json.js";
+import { packageRoot } from "../lib/package-root.js";
 import { createRuntimeLaunch } from "../runtime/launch.js";
 import { readLines } from "../runtime/lines.js";
 
 const TIMEOUT_MS = 30_000;
+
+async function packageVersion(): Promise<string> {
+  const raw: unknown = JSON.parse(
+    await readFile(join(packageRoot(import.meta.url), "package.json"), "utf8"),
+  );
+  return isJsonObject(raw) && typeof raw.version === "string" ? raw.version : "unknown";
+}
 
 function rpc(id: number, method: string, params: unknown): string {
   return `${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`;
@@ -40,7 +50,7 @@ export async function runLiveProbe(appOverride?: string): Promise<void> {
         capabilities: {},
         clientInfo: {
           name: "browserjack-doctor",
-          version: "0.1.0",
+          version: await packageVersion(),
         },
       }),
     );
