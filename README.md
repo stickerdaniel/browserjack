@@ -81,6 +81,11 @@ Security checks are build-independent and run on every launch: ChatGPT.app and n
 
 ## Architecture
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
+  <img alt="Browserjack architecture: an MCP client talks over stdio to Browserjack, a thin launcher and proxy that verifies OpenAI's signatures before every launch, then spawns the OpenAI-signed codex sandbox running node_repl, which reaches the real Chrome or Helium profile through OpenAI's native host and extension. Page content flows only up to the MCP client." src="docs/assets/architecture.svg">
+</picture>
+
 ```text
 MCP client (e.g. Claude Code)
   → browserjack (stdio/JSONL metadata proxy)
@@ -90,6 +95,8 @@ MCP client (e.g. Claude Code)
   → official ChatGPT/Codex extension
   → Chrome or Helium profile
 ```
+
+The editable source is [docs/assets/architecture.tldr](docs/assets/architecture.tldr) (open on [tldraw.com](https://www.tldraw.com)).
 
 ## Security and privacy
 
