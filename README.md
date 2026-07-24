@@ -7,7 +7,7 @@
 Browserjack lets Claude Code and other MCP clients reuse the browser runtime that OpenAI's ChatGPT.app already installed on your Mac. If the ChatGPT/Codex Chrome extension is set up, your agent gets a persistent Node.js REPL that drives your real, signed-in Chrome or Helium profile through OpenAI's own signed components. Nothing extra is injected into the browser and no second automation extension is installed.
 
 > [!WARNING]
-> Experimental. Browserjack relies on undocumented, build-specific OpenAI interfaces and can control authenticated browser sessions. It supports one verified ChatGPT.app build at a time and fails closed on everything else. Treat it as a developer tool, not a supported product.
+> Experimental. Browserjack relies on undocumented, build-specific OpenAI interfaces and can control authenticated browser sessions. Every launch verifies OpenAI's code signatures; new ChatGPT.app builds pass a one-time runtime self-test before first use. Treat it as a developer tool, not a supported product.
 
 Local stdio · zero runtime dependencies · npm provenance · OpenAI signature checks · fail-closed compatibility
 
@@ -77,7 +77,7 @@ npx browserjack setup --client plugin --scope user
 
 ## Compatibility
 
-Browserjack pins one verified ChatGPT.app build: the cached browser client must match the app-bundled one byte for byte, and unknown builds are rejected. When ChatGPT.app updates, `doctor` fails closed until a Browserjack release supports the new build. To request support, open a compatibility issue with your `doctor --json` output (redact your username in paths first).
+Security checks are build-independent and run on every launch: ChatGPT.app and native-host signatures against OpenAI's Team ID, and a byte-for-byte match between the cached browser client and the one inside the signed app bundle. Build compatibility is separate: builds covered by the bundled manifest start immediately, and an unknown build (for example right after a ChatGPT.app update) triggers a one-time runtime self-test — a cold start with a real browser handshake — before the first launch. A passing build is recorded locally and starts without delay afterwards; a failing one is blocked, which means OpenAI changed the interface and Browserjack needs an update. If a new build misbehaves in ways the handshake cannot catch, open a compatibility issue with your `doctor --json` output (redact your username in paths first).
 
 ## Architecture
 
@@ -112,13 +112,11 @@ Vulnerability reports: [SECURITY.md](SECURITY.md).
 
 **Why macOS only?** Browserjack drives the browser runtime bundled with the macOS ChatGPT.app and its code-signed native hosts. There is no equivalent local runtime to reuse on Windows or Linux.
 
-**Why only one ChatGPT.app version?** The OpenAI interfaces are undocumented and change between builds. Pinning one verified build and its exact browser-client hash is what keeps the trust boundary honest; a floating match would defeat the point.
-
-**What happens after a ChatGPT.app update?** `doctor` fails the compatibility check and Browserjack refuses to start until the manifest is updated. A long-lived `run` process can survive an app update, so restart Claude Code after updating ChatGPT.app.
+**What happens after a ChatGPT.app update?** The first start runs a one-time self-test of the new build (a few seconds); after it passes, the build is recorded and starts are instant again. Signature and cache checks run on every launch regardless. A long-lived `run` process can survive an app update, so restart Claude Code after updating ChatGPT.app.
 
 **Does Browserjack modify or redistribute OpenAI software?** No. It launches the OpenAI-signed `codex sandbox`, which starts OpenAI's own `node_repl`, and speaks the runtime's existing MCP protocol. No binaries are modified, patched, or redistributed.
 
-**Is this supported by OpenAI?** No. The interfaces are undocumented and build-specific, and they can change without notice. Browserjack is unofficial and fails closed when they do.
+**Is this supported by OpenAI?** No. The interfaces are undocumented and build-specific, and they can change without notice. Browserjack is unofficial; when an interface change breaks the handshake, the self-test blocks the build until an update.
 
 **Is "browserjack" a hijacker?** No — the name means jack as in connector. It is a local bridge to components you installed yourself; it injects nothing into the browser and installs no extension.
 

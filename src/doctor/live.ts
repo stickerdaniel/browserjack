@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import type { DiscoveredRuntime } from "../discovery/types.js";
 import { isJsonObject } from "../lib/json.js";
 import { packageRoot } from "../lib/package-root.js";
 import { createRuntimeLaunch } from "../runtime/launch.js";
@@ -22,7 +23,7 @@ function rpc(id: number, method: string, params: unknown): string {
   return `${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`;
 }
 
-export async function runLiveProbe(appOverride?: string): Promise<void> {
+export async function runLiveProbe(appOverride?: string): Promise<DiscoveredRuntime> {
   const launch = await createRuntimeLaunch(appOverride);
   const browserClientUrl = pathToFileURL(launch.runtime.browserClientPath).href;
   const child = spawn(launch.command, launch.args, {
@@ -127,6 +128,7 @@ export async function runLiveProbe(appOverride?: string): Promise<void> {
     if (!initialized || !toolsListed || !browserConnected) {
       throw new Error("Cold-start probe did not initialize the OpenAI browser runtime");
     }
+    return launch.runtime;
   } finally {
     clearTimeout(timer);
     child.stdin.end();

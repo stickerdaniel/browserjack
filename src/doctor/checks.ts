@@ -1,4 +1,5 @@
-import { assertCompatible } from "../compat/manifest.js";
+import { assertCachedClientConsistent, findCompatibilityEntry } from "../compat/manifest.js";
+import { findVerifiedBuild } from "../compat/verified.js";
 import { discoverRuntime } from "../discovery/app.js";
 import { inspectNativeHosts } from "../discovery/native-host.js";
 import type { DiscoveredRuntime } from "../discovery/types.js";
@@ -110,24 +111,54 @@ export async function runDoctor(appOverride?: string): Promise<DoctorReport> {
     });
 
     try {
-      const compatibility = await assertCompatible(runtime);
+      assertCachedClientConsistent(runtime);
       checks.push({
-        id: "compatibility",
+        id: "cache-integrity",
         status: "pass",
-        summary: `ChatGPT.app ${runtime.appVersion} matches the bundled compatibility manifest`,
-        details: {
-          pluginVersion: runtime.pluginVersion,
-          browserClientSha256: runtime.browserClientSha256,
-          manifestGeneratedAt: compatibility.manifestGeneratedAt,
-        },
+        summary: "Cached browser client matches the verified ChatGPT.app client",
+        details: { browserClientSha256: runtime.browserClientSha256 },
       });
     } catch (error) {
       checks.push({
-        id: "compatibility",
+        id: "cache-integrity",
         status: "failure",
         summary: error instanceof Error ? error.message : String(error),
-        remediation: "Install a bridge release that supports this ChatGPT.app build.",
+        remediation:
+          "The writable Codex cache diverges from the signed app bundle. Remove the cache or reinstall ChatGPT.app.",
       });
+    }
+
+    if (await findCompatibilityEntry(runtime)) {
+      checks.push({
+        id: "compatibility",
+        status: "pass",
+        summary: `ChatGPT.app ${runtime.appVersion} is covered by the bundled compatibility manifest`,
+        details: {
+          pluginVersion: runtime.pluginVersion,
+          browserClientSha256: runtime.browserClientSha256,
+        },
+      });
+    } else {
+      const verified = await findVerifiedBuild(runtime);
+      checks.push(
+        verified
+          ? {
+              id: "compatibility",
+              status: "pass",
+              summary: `ChatGPT.app ${runtime.appVersion} passed the runtime self-test on this machine`,
+              details: { verifiedAt: verified.verifiedAt },
+            }
+          : {
+              id: "compatibility",
+              status: "warning",
+              summary: `ChatGPT.app ${runtime.appVersion} is not yet verified; the first run performs a one-time self-test`,
+              details: {
+                pluginVersion: runtime.pluginVersion,
+                browserClientSha256: runtime.browserClientSha256,
+              },
+              remediation: "Run doctor --live to verify this build now.",
+            },
+      );
     }
 
     checks.push(...(await nativeManifestChecks(runtime)));

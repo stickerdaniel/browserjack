@@ -1,4 +1,4 @@
-import { assertCompatible } from "../compat/manifest.js";
+import { assertCachedClientConsistent } from "../compat/manifest.js";
 import { discoverRuntime } from "../discovery/app.js";
 import { assertNativeHostsTrusted } from "../discovery/native-host.js";
 import type { DiscoveredRuntime } from "../discovery/types.js";
@@ -41,9 +41,13 @@ function sanitizedParentEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+// Every security check runs here, for every build: app and native-host
+// signatures, cache byte-identity, containment. Build *compatibility* is
+// established separately (manifest entry or one-time self-test); it gates
+// nothing security-relevant.
 export async function createRuntimeLaunch(appOverride?: string): Promise<RuntimeLaunch> {
   const runtime = await discoverRuntime(appOverride);
-  await assertCompatible(runtime);
+  assertCachedClientConsistent(runtime);
   await assertNativeHostsTrusted(runtime);
 
   return {

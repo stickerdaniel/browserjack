@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { recordVerifiedBuild } from "./compat/verified.js";
 import { runDoctor, printDoctorReport } from "./doctor/checks.js";
 import { runLiveProbe } from "./doctor/live.js";
 import { setupBridge } from "./install/setup.js";
@@ -53,7 +54,8 @@ async function main(): Promise<number> {
       const report = await runDoctor(appOverride);
       if (args.includes("--live") && report.ready) {
         try {
-          await runLiveProbe(appOverride);
+          const runtime = await runLiveProbe(appOverride);
+          await recordVerifiedBuild(runtime);
           report.checks.push({
             id: "live",
             status: "pass",

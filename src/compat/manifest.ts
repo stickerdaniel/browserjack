@@ -4,7 +4,7 @@ import { isJsonObject, readJsonFile, requireString } from "../lib/json.js";
 import { packageRoot } from "../lib/package-root.js";
 import type { DiscoveredRuntime } from "../discovery/types.js";
 
-interface CompatibilityEntry {
+export interface CompatibilityEntry {
   bundleId: string;
   appVersion: string;
   pluginVersion: string;
@@ -56,29 +56,12 @@ async function loadManifest(): Promise<CompatibilityManifest> {
   };
 }
 
-export interface CompatibilityResult {
-  manifestGeneratedAt: string;
-  entry: CompatibilityEntry;
-}
-
-export async function assertCompatible(runtime: DiscoveredRuntime): Promise<CompatibilityResult> {
-  const manifest = await loadManifest();
-  const entry = manifest.entries.find(
-    (candidate) =>
-      candidate.bundleId === runtime.bundleId &&
-      candidate.appVersion === runtime.appVersion &&
-      candidate.pluginVersion === runtime.pluginVersion &&
-      candidate.teamId === runtime.teamId &&
-      candidate.architectures.includes(runtime.architecture) &&
-      candidate.browserClientSha256 === runtime.browserClientSha256,
-  );
-
-  if (!entry) {
-    throw new Error(
-      `Unsupported ChatGPT.app build ${runtime.appVersion} with Chrome plugin ${runtime.pluginVersion} and browser client ${runtime.browserClientSha256}`,
-    );
-  }
-
+// Security check, independent of any build knowledge: the cached client in the
+// writable Codex cache must be byte-identical to the one inside the verified,
+// signed app bundle. This holds for every build, known or not.
+export function assertCachedClientConsistent(
+  runtime: Pick<DiscoveredRuntime, "browserClientSha256" | "cachedBrowserClientSha256">,
+): void {
   if (
     runtime.cachedBrowserClientSha256 &&
     runtime.cachedBrowserClientSha256 !== runtime.browserClientSha256
@@ -87,6 +70,24 @@ export async function assertCompatible(runtime: DiscoveredRuntime): Promise<Comp
       "The cached Chrome browser client differs from the verified ChatGPT.app client",
     );
   }
+}
 
-  return { manifestGeneratedAt: manifest.generatedAt, entry };
+export async function findCompatibilityEntry(
+  runtime: Pick<
+    DiscoveredRuntime,
+    "bundleId" | "appVersion" | "pluginVersion" | "teamId" | "architecture" | "browserClientSha256"
+  >,
+): Promise<CompatibilityEntry | null> {
+  const manifest = await loadManifest();
+  return (
+    manifest.entries.find(
+      (candidate) =>
+        candidate.bundleId === runtime.bundleId &&
+        candidate.appVersion === runtime.appVersion &&
+        candidate.pluginVersion === runtime.pluginVersion &&
+        candidate.teamId === runtime.teamId &&
+        candidate.architectures.includes(runtime.architecture) &&
+        candidate.browserClientSha256 === runtime.browserClientSha256,
+    ) ?? null
+  );
 }

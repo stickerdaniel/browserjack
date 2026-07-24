@@ -11,9 +11,9 @@ This project is an experimental compatibility bridge. It starts OpenAI component
 
 ## Defaults
 
-- Unknown ChatGPT.app builds fail closed.
 - ChatGPT.app must have bundle ID `com.openai.codex` and Team ID `2DC432GLL2`.
-- The cached browser client must match the verified app-bundled browser client byte-for-byte.
+- The cached browser client must match the verified app-bundled browser client byte-for-byte, on every launch and for every build.
+- Build compatibility is established per build: through the bundled manifest, or through a one-time runtime self-test (cold start with a real browser handshake) whose passing result is recorded locally. A build that fails the self-test is blocked. This gate is about interface compatibility; the signature and byte-identity checks above are the security boundary and never depend on it.
 - Before every launch, the native-messaging host that each installed browser (Chrome, Helium) is actually configured to run is resolved and code-signature verified against OpenAI Team ID `2DC432GLL2`. A host configured under the writable Codex cache must resolve within that cache. Any present-but-untrusted browser manifest aborts the launch, so this check is enforced on the `run` path, not only in `doctor`.
 - Trusted code paths are restricted to the verified Chrome plugin directory, not all of `~/.codex`.
 - Node.js code-injection variables (`NODE_OPTIONS` and external-module loaders) are stripped from the environment handed to OpenAI's runtime.
@@ -26,6 +26,6 @@ The current OpenAI sandbox profile requires read-only filesystem access from `/`
 
 ## Known limitations
 
-The OpenAI interfaces used here are undocumented and may change without notice. The bundled compatibility manifest is authenticated through the npm package (and its provenance attestation) but is not yet independently signed. The filesystem read scope is broad (see above), and only one ChatGPT.app build is supported at a time.
+The OpenAI interfaces used here are undocumented and may change without notice. The runtime self-test proves that a new build initializes and completes the browser handshake; it cannot prove that the build behaves semantically identically beyond that. The bundled compatibility manifest is authenticated through the npm package (and its provenance attestation) but is not yet independently signed. The filesystem read scope is broad (see above).
 
 Do not enable global all-sites access, global upload approval, or raw `node_repl` approval as a distribution default.

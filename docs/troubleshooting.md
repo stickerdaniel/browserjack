@@ -8,9 +8,9 @@ npx browserjack doctor --json
 
 Doctor inspects ChatGPT.app, its code signature, the bundled runtime, the Chrome plugin, the cached browser client, the compatibility entry, and the Chrome and Helium native-host manifests. `npx browserjack status` separately reports whether the local installation itself is healthy. (After setup, the installed shim also runs as plain `browserjack` from `~/Library/Application Support/browserjack/bin` if you add it to your `PATH`; the examples here use `npx`, which always works.)
 
-## Doctor fails the compatibility check
+## Doctor warns that the build is not yet verified
 
-Browserjack refuses unknown ChatGPT.app builds by design. This is expected right after a ChatGPT.app update. Update Browserjack to a release that supports your build. If no release supports it yet, open a compatibility issue with your `doctor --json` output — redact your macOS username from the paths before posting.
+Expected right after a ChatGPT.app update: the next `run` (or `doctor --live`) performs a one-time self-test of the new build and records the result, after which starts are instant again. If the self-test fails, OpenAI changed the runtime interface — update Browserjack, or open a compatibility issue with your `doctor --json` output. Redact your macOS username from the paths before posting.
 
 ## A connected server stops working after a ChatGPT.app update
 

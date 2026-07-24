@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "browserjack",
   "displayName": "Browserjack",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Use OpenAI's locally installed Codex browser runtime from Claude Code (macOS)",
   "author": {
     "name": "Daniel Sticker"

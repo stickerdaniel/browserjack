@@ -31,7 +31,7 @@ node dist/cli.js doctor --live   # requires a supported ChatGPT.app
 
 ## Adding a compatibility entry
 
-When a ChatGPT.app update lands, doctor will fail closed. To propose support for the new build, open an issue with the `doctor --json` output (redact your username in paths). Maintainers verify the new browser-client hash against an OpenAI-signed installation before extending the manifest.
+New ChatGPT.app builds verify themselves through the one-time runtime self-test, so most updates need no manifest change. Manifest entries remain useful as pre-verified defaults: to propose one, open an issue with the `doctor --json` output (redact your username in paths). Maintainers verify the new browser-client hash against an OpenAI-signed installation before extending the manifest.
 
 ## Pull requests
 

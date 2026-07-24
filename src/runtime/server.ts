@@ -4,6 +4,8 @@ import type { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 
+import { ensureBuildCompatible } from "../compat/ensure.js";
+import { runLiveProbe } from "../doctor/live.js";
 import { isJsonObject } from "../lib/json.js";
 import { createRuntimeLaunch } from "./launch.js";
 import { readLines } from "./lines.js";
@@ -71,6 +73,14 @@ async function forwardChildOutput(output: Readable, browserClientUrl: string): P
 
 export async function runBridge(appOverride?: string): Promise<number> {
   const launch = await createRuntimeLaunch(appOverride);
+  const compatibility = await ensureBuildCompatible(launch.runtime, async () => {
+    await runLiveProbe(appOverride);
+  });
+  if (compatibility.source === "self-test") {
+    process.stderr.write(
+      `browserjack: verified ChatGPT.app build ${launch.runtime.appVersion} via runtime self-test\n`,
+    );
+  }
   const child = spawn(launch.command, launch.args, {
     cwd: launch.runtime.codexHome,
     env: launch.env,

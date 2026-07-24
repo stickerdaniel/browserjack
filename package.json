@@ -1,6 +1,6 @@
 {
   "name": "browserjack",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A local macOS MCP bridge that lets Claude Code and other MCP clients reuse OpenAI's installed Codex browser runtime.",
   "keywords": [
     "browser-automation",

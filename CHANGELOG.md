@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-24
+
+### Changed
+
+- New ChatGPT.app builds no longer hard-block the bridge. Signature verification, native-host checks, and the byte-for-byte cache comparison run on every launch for every build; an unknown build additionally passes a one-time runtime self-test (cold start with a real browser handshake) before its first use and is then recorded locally. A build that fails the self-test stays blocked. The bundled manifest remains as a set of pre-verified builds that skip the self-test.
+- `doctor` reports cache integrity and build verification as separate checks; an unverified build is a warning with a `doctor --live` remediation, not a failure
+- `doctor --live` records a passing build, so the first real `run` starts without a probe
+
 ## [0.2.0] - 2026-07-24
 
 ### Changed
@@ -43,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Disabled-by-default Claude Code plugin with setup, doctor, and browser skills
 - stderr secret redaction and strict stdout protocol purity
 
-[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/stickerdaniel/browserjack/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/stickerdaniel/browserjack/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/stickerdaniel/browserjack/releases/tag/v0.1.0
