@@ -37,12 +37,9 @@ Claude runs JavaScript in the bridged runtime and answers with `Example Domain`.
 
 ## What it is, and is not
 
-Browserjack is a thin launcher and stdio proxy. The browser capabilities themselves — navigation, screenshots, uploads, computer use — live in OpenAI's installed runtime, exposed as a persistent `node_repl` MCP surface. Browserjack contains no Playwright, no CDP, and no navigation code of its own, and it does not modify or redistribute any OpenAI component.
+Browserjack is a thin launcher and stdio proxy: all browser capabilities live in OpenAI's installed runtime, exposed as a persistent `node_repl` MCP surface. It contains no Playwright, CDP, or navigation code of its own and does not modify or redistribute any OpenAI component.
 
-Compared with tools that bring their own automation stack:
-
-- **Claude Code's [official Chrome integration](https://code.claude.com/docs/en/chrome)** is the more robust cross-platform default when its requirements fit: it is a supported product with granular site permissions and works on macOS, Linux, and Windows, but it requires Anthropic's own browser extension, a direct Anthropic plan, and `/login` authentication, and it exposes a fixed browser tool list. Browserjack instead exposes OpenAI's persistent Node REPL (including macOS computer use), also works for Helium, is client-independent stdio MCP, and needs no Anthropic plan for the browser layer — at the price of broader local capability, macOS-only support, and build-specific maintenance.
-- **Playwright MCP, Browser MCP, and similar servers** launch and control a browser through their own automation stack and extension. Browserjack reuses the OpenAI stack you already installed and trusts its existing permission prompts.
+Unlike Playwright MCP, Browser MCP, or Claude Code's [official Chrome integration](https://code.claude.com/docs/en/chrome) — the supported cross-platform default if you have a direct Anthropic plan — Browserjack installs no extension of its own. It reuses the OpenAI stack already on your Mac, exposes a persistent Node REPL (including macOS computer use) instead of a fixed tool list, works with any stdio MCP client, and needs no Anthropic plan; the price is macOS-only support and build-specific maintenance.
 
 ## Commands
 
