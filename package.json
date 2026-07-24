@@ -1,0 +1,71 @@
+{
+  "name": "browserjack",
+  "version": "0.1.0",
+  "description": "Use the ChatGPT browser extension from Claude Code. A non-invasive MCP bridge to the locally installed OpenAI browser runtime on macOS.",
+  "keywords": [
+    "browser",
+    "browser-automation",
+    "chatgpt",
+    "claude-code",
+    "computer-use",
+    "macos",
+    "mcp"
+  ],
+  "homepage": "https://github.com/stickerdaniel/browserjack#readme",
+  "bugs": {
+    "url": "https://github.com/stickerdaniel/browserjack/issues"
+  },
+  "license": "MIT",
+  "author": "Daniel Sticker (https://github.com/stickerdaniel)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stickerdaniel/browserjack.git"
+  },
+  "bin": {
+    "browserjack": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "plugin",
+    "compatibility",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64",
+    "x64"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint --type-aware",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "doctor": "npm run build --silent && node dist/cli.js doctor",
+    "pack:check": "npm run build && npm pack --dry-run",
+    "verify": "npm run check && npm run lint && npm run format:check && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "oxfmt": "0.60.0",
+    "oxlint": "1.75.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
