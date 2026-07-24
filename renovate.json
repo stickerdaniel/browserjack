@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    "schedule:weekly"
+  ],
+  "rangeStrategy": "pin",
+  "packageRules": [
+    {
+      "description": "Group the VoidZero toolchain (oxlint, oxfmt, tsgolint move quickly)",
+      "groupName": "oxc toolchain",
+      "matchPackageNames": ["oxlint", "oxfmt", "oxlint-tsgolint"]
+    },
+    {
+      "description": "TypeScript pins the tsgolint compatibility target; update it separately",
+      "matchPackageNames": ["typescript"],
+      "groupName": "typescript"
+    }
+  ]
+}

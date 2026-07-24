@@ -1,0 +1,23 @@
+name: New ChatGPT.app build
+description: Doctor rejects your ChatGPT.app build and you want it supported
+labels: [compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Browserjack intentionally fails closed on unknown ChatGPT.app builds. Maintainers verify each new build against an OpenAI-signed installation before extending the manifest.
+  - type: textarea
+    id: doctor
+    attributes:
+      label: doctor --json output
+      description: Run `browserjack doctor --json` and paste the output. Redact your username in paths.
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: ChatGPT.app version and architecture
+      placeholder: 26.720.xxxx on arm64
+    validations:
+      required: true
