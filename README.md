@@ -6,8 +6,8 @@
 
 Browserjack lets Claude Code and other MCP clients reuse the browser runtime that OpenAI's ChatGPT.app already installed on your Mac: a persistent Node.js REPL driving your real, signed-in Chrome or Helium profile. Nothing is injected into the browser and no second automation extension is installed.
 
-> [!WARNING]
-> Experimental developer tool. Built on undocumented OpenAI interfaces; controls authenticated browser sessions.
+> [!NOTE]
+> Your agent acts inside your logged-in browser sessions through OpenAI interfaces that are undocumented and can break with any ChatGPT.app update.
 
 Local stdio · zero runtime dependencies · npm provenance · OpenAI signature checks · fail-closed compatibility
 
@@ -85,8 +85,6 @@ After a ChatGPT.app update, the first start runs a one-time self-test of the new
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
   <img alt="Browserjack architecture: an MCP client talks over stdio to Browserjack, a thin launcher and proxy that verifies OpenAI's signatures before every launch, then spawns the OpenAI-signed codex sandbox running node_repl, which reaches the real Chrome or Helium profile through OpenAI's native host and extension. Page content flows only up to the MCP client." src="docs/assets/architecture.svg">
 </picture>
-
-The editable source is [docs/assets/architecture.tldr](docs/assets/architecture.tldr) (open on [tldraw.com](https://www.tldraw.com)).
 
 ## Security and privacy
 
