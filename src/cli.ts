@@ -23,9 +23,10 @@ Options:
   --app PATH             Use a specific ChatGPT.app bundle (run and doctor)
 
 Environment:
-  CHATGPT_APP_PATH       Override ChatGPT.app discovery
-  CODEX_HOME             Override ~/.codex
-  BROWSERJACK_HOME            Override the installation root
+  CHATGPT_APP_PATH                 Override ChatGPT.app discovery
+  CODEX_HOME                       Override ~/.codex
+  BROWSERJACK_HOME                 Override the installation root
+  BROWSER_USE_AVAILABLE_BACKENDS   Browser backends (default: chrome)
 `;
 
 function valueAfter(args: readonly string[], flag: string): string | undefined {
