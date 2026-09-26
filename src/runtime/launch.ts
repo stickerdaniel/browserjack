@@ -58,12 +58,19 @@ function runtimeEnv(runtime: DiscoveredRuntime): Record<string, string> {
   };
 }
 
-// codex sandbox applies shell_environment_policy from CODEX_HOME/config.toml
-// to the child, and ChatGPT.app writes its own NODE_REPL_* values there. Pin
-// the policy so a stale or foreign config cannot replace the runtime env.
+// JSON string escapes are valid TOML basic-string escapes, except that TOML
+// also forbids a literal DEL.
+function tomlString(value: string): string {
+  return JSON.stringify(value).replaceAll("\u007f", "\\u007f");
+}
+
+// codex sandbox merges this override into shell_environment_policy from
+// CODEX_HOME/config.toml, where ChatGPT.app writes its own NODE_REPL_* values.
+// `set` wins over configured values and excludes; include_only runs after
+// `set`, so it is cleared to keep a configured allowlist from dropping them.
 function environmentPolicy(env: Record<string, string>): string {
-  const entries = Object.entries(env).map(([key, value]) => `${key}=${JSON.stringify(value)}`);
-  return `shell_environment_policy={inherit="all",set={${entries.join(",")}}}`;
+  const entries = Object.entries(env).map(([key, value]) => `${key}=${tomlString(value)}`);
+  return `shell_environment_policy={inherit="all",include_only=[],set={${entries.join(",")}}}`;
 }
 
 // Pure assembly of the sandbox invocation from an already-verified runtime.

@@ -121,7 +121,7 @@ export async function runBridge(appOverride?: string): Promise<number> {
   })();
   let childExited = false;
   void inputForwarding.catch((error: unknown) => {
-    if (childExited) {
+    if (childExited && isJsonObject(error) && error.code === "ERR_STREAM_PREMATURE_CLOSE") {
       return;
     }
     inputFailure = error;

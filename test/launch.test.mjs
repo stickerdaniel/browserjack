@@ -26,7 +26,8 @@ const runtime = {
   nativeHostPath: "/Applications/ChatGPT.app/host",
   browserClientPath: "/Applications/ChatGPT.app/scripts/browser-client.mjs",
   browserClientSha256: "d".repeat(64),
-  browserServicePath: "/Applications/ChatGPT.app/scripts/browser-service.mjs",
+  browserServicePath:
+    "/Applications/ChatGPT.app/Contents/Resources/plugins/chrome/scripts/browser-service.mjs",
   codexHome: "/Users/example/.codex",
 };
 
@@ -78,6 +79,21 @@ test("pins the runtime env over any shell_environment_policy in config.toml", ()
   ]) {
     assert.ok(policy.includes(`${key}=${JSON.stringify(launch.env[key])}`), `${key} is not pinned`);
   }
+});
+
+test("a configured include_only allowlist cannot drop the pinned env", () => {
+  const policy = configOverrides(composeLaunch(runtime)).find((arg) =>
+    arg.startsWith("shell_environment_policy="),
+  );
+  assert.match(policy, /include_only=\[\]/);
+});
+
+test("escapes DEL, which TOML forbids in basic strings", () => {
+  const policy = configOverrides(
+    composeLaunch({ ...runtime, codexHome: "/Users/example/odd\u007fdir/.codex" }),
+  ).find((arg) => arg.startsWith("shell_environment_policy="));
+  assert.ok(!policy.includes("\u007f"), "literal DEL in TOML override");
+  assert.ok(policy.includes('CODEX_HOME="/Users/example/odd\\u007fdir/.codex"'));
 });
 
 test("sandbox profile limits writes to CODEX_HOME and temp dirs", () => {

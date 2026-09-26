@@ -65,7 +65,7 @@ test("any OpenAI extension origin satisfies the origin check", async () => {
     allowed_origins: [`chrome-extension://${EDGE_EXTENSION_ID}/`],
   });
   const result = await inspectNativeHost({ browser: "Helium", manifestPath }, runtime(dir));
-  assert.doesNotMatch(result.reason, /origin/);
+  assert.equal(result.reason, "configured native host does not exist");
 });
 
 test("a nonexistent configured host is untrusted", async () => {
