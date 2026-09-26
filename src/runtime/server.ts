@@ -118,7 +118,11 @@ export async function runBridge(appOverride?: string): Promise<number> {
       child.stdin.end();
     }
   })();
+  let childExited = false;
   void inputForwarding.catch((error: unknown) => {
+    if (childExited) {
+      return;
+    }
     inputFailure = error;
     forwardSignal(child.pid, "SIGTERM");
   });
@@ -126,7 +130,11 @@ export async function runBridge(appOverride?: string): Promise<number> {
   const exitEvent: unknown[] = await once(child, "exit");
   const code = typeof exitEvent[0] === "number" ? exitEvent[0] : null;
   const signal = typeof exitEvent[1] === "string" ? exitEvent[1] : null;
-  process.stdin.pause();
+  // Ends the pending stdin read so a signal-initiated exit does not wait for
+  // the MCP client to close its end of the pipe. The read then rejects with a
+  // premature close, which is expected once the child is gone.
+  childExited = true;
+  process.stdin.destroy();
 
   process.removeListener("SIGINT", onSigint);
   process.removeListener("SIGTERM", onSigterm);
