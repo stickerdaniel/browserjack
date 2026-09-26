@@ -8,9 +8,12 @@ Use the plugin-provided `js` MCP tool for browser tasks. The MCP initialization 
 For the standard `/Applications/ChatGPT.app` installation:
 
 ```js
-var browserClient =
-  await import("file:///Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled/plugins/chrome/scripts/browser-client.mjs");
-await browserClient.setupBrowserRuntime({ globals: globalThis });
+if (globalThis.agent?.browsers == null) {
+  const browserClient =
+    await import("file:///Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled/plugins/chrome/scripts/browser-client.mjs");
+  const runtime = await browserClient.setupBrowserRuntime({ globals: globalThis });
+  if (globalThis.agent == null) globalThis.agent = runtime;
+}
 var availableBackends = await agent.browsers.list();
 ```
 

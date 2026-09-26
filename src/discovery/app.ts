@@ -23,7 +23,7 @@ interface ChromePluginMetadata {
 }
 
 interface ExtensionMetadata {
-  extensionId: string;
+  extensionIds: string[];
   extensionHostName: string;
 }
 
@@ -59,14 +59,39 @@ function parsePluginMetadata(value: unknown, source: string): ChromePluginMetada
   return { version: requireString(value, "version", source) };
 }
 
+function parseExtensionIds(value: unknown, source: string): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    !value.every((item) => typeof item === "string" && item.length > 0)
+  ) {
+    throw new Error(`${source} must contain a non-empty extensionIds array`);
+  }
+  return value;
+}
+
 function parseExtensionMetadata(value: unknown, source: string): ExtensionMetadata {
   if (!isJsonObject(value)) {
     throw new Error(`${source} must contain a JSON object`);
   }
   return {
-    extensionId: requireString(value, "extensionId", source),
+    extensionIds:
+      value.extensionIds === undefined
+        ? [requireString(value, "extensionId", source)]
+        : parseExtensionIds(value.extensionIds, source),
     extensionHostName: requireString(value, "extensionHostName", source),
   };
+}
+
+// ChatGPT.app 26.814 replaced scripts/extension-id.json (one extensionId) with
+// scripts/extension-ids.json (one extensionIds array per store). Older builds
+// only ship the former.
+export async function readExtensionMetadata(chromePluginPath: string): Promise<ExtensionMetadata> {
+  const current = join(chromePluginPath, "scripts", "extension-ids.json");
+  const path = (await exists(current))
+    ? current
+    : join(chromePluginPath, "scripts", "extension-id.json");
+  return parseExtensionMetadata(await readJsonFile(path), path);
 }
 
 function parseCodesignDetails(output: string): {
@@ -211,13 +236,10 @@ export async function discoverRuntime(appOverride?: string): Promise<DiscoveredR
     await readJsonFile(pluginMetadataPath),
     pluginMetadataPath,
   );
-  const extensionMetadataPath = join(chromePluginPath, "scripts", "extension-id.json");
-  const extensionMetadata = parseExtensionMetadata(
-    await readJsonFile(extensionMetadataPath),
-    extensionMetadataPath,
-  );
+  const extensionMetadata = await readExtensionMetadata(chromePluginPath);
 
   const browserClientPath = join(chromePluginPath, "scripts", "browser-client.mjs");
+  const browserServicePath = join(chromePluginPath, "scripts", "browser-service.mjs");
   const codexHome = resolve(process.env.CODEX_HOME ?? join(homedir(), ".codex"));
   const cached = await resolveOptionalCache(codexHome);
 
@@ -235,11 +257,14 @@ export async function discoverRuntime(appOverride?: string): Promise<DiscoveredR
     nodeModulesPath: await realpath(join(cuaRoot, cuaManifest.nodeModules)),
     chromePluginPath: await realpath(chromePluginPath),
     pluginVersion: pluginMetadata.version,
-    extensionId: extensionMetadata.extensionId,
+    extensionIds: extensionMetadata.extensionIds,
     nativeHostName: extensionMetadata.extensionHostName,
     nativeHostPath: await findNativeHost(chromePluginPath),
     browserClientPath: await realpath(browserClientPath),
     browserClientSha256: await sha256File(browserClientPath),
+    ...((await exists(browserServicePath))
+      ? { browserServicePath: await realpath(browserServicePath) }
+      : {}),
     ...cached,
     codexHome,
   };

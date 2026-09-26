@@ -109,12 +109,12 @@ export async function inspectNativeHost(
 
   const configuredPath = typeof value.path === "string" ? value.path : null;
   const allowedOrigins = Array.isArray(value.allowed_origins) ? value.allowed_origins : [];
-  const expectedOrigin = `chrome-extension://${runtime.extensionId}/`;
+  const expectedOrigins = runtime.extensionIds.map((id) => `chrome-extension://${id}/`);
 
   if (value.name !== runtime.nativeHostName) {
     return { ...base, status: "untrusted", reason: "unexpected native-host name" };
   }
-  if (!allowedOrigins.includes(expectedOrigin)) {
+  if (!expectedOrigins.some((origin) => allowedOrigins.includes(origin))) {
     return { ...base, status: "untrusted", reason: "extension origin is not allowed" };
   }
   if (configuredPath === null) {
