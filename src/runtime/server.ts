@@ -50,7 +50,7 @@ function addBrowserRuntimeInstructions(line: string, browserClientUrl: string): 
   const bridgeInstructions = [
     "This bridge uses OpenAI's verified browser client from:",
     browserClientUrl,
-    "Import that exact URL and, unless globalThis.agent?.browsers already exists, run `const runtime = await setupBrowserRuntime({ globals: globalThis }); if (globalThis.agent == null) globalThis.agent = runtime;` before using agent.browsers.",
+    "Import that exact URL and, unless globalThis.agent?.browsers already exists, run `const runtime = await setupBrowserRuntime({ globals: globalThis }); if (runtime != null) globalThis.agent = runtime;` before using agent.browsers.",
   ].join(" ");
 
   return `${JSON.stringify({

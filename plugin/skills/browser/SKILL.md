@@ -12,7 +12,7 @@ if (globalThis.agent?.browsers == null) {
   const browserClient =
     await import("file:///Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled/plugins/chrome/scripts/browser-client.mjs");
   const runtime = await browserClient.setupBrowserRuntime({ globals: globalThis });
-  if (globalThis.agent == null) globalThis.agent = runtime;
+  if (runtime != null) globalThis.agent = runtime;
 }
 var availableBackends = await agent.browsers.list();
 ```
