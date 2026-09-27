@@ -2,39 +2,217 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/workflows/actionlint.yml
+      - scripts/pack-check.sh
+      - test/release-workflow.test.mjs
+      - package.json
+      - package-lock.json
+      - plugin/.claude-plugin/plugin.json
+      - plugin/skills/setup/SKILL.md
+      - CHANGELOG.md
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  publish:
+  verify:
     runs-on: macos-latest
+    timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write # npm provenance via OIDC trusted publishing
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run verify
+        env:
+          BROWSERJACK_RELEASE_GATE_TEST: required
+      - run: npm run pack:check
+        env:
+          BROWSERJACK_ARTIFACT_DIR: ${{ runner.temp }}/browserjack-artifact
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: browserjack-${{ github.sha }}
+          path: ${{ runner.temp }}/browserjack-artifact/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release-gate:
+    needs: verify
+    if: >-
+      github.repository == 'stickerdaniel/browserjack' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.gate.outputs.publish }}
+      version: ${{ steps.gate.outputs.version }}
+      sha256: ${{ steps.gate.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: browserjack-${{ github.sha }}
+          path: ${{ runner.temp }}/release
+      - id: gate
+        name: Check the tested tarball against main and npm
+        env:
+          RELEASE_DIR: ${{ runner.temp }}/release
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          shopt -s nullglob
+          tarballs=("$RELEASE_DIR"/browserjack-*.tgz)
+          [ "${#tarballs[@]}" -eq 1 ] || fail "Expected one browserjack tarball, found ${#tarballs[@]}."
+          tarball="${tarballs[0]}"
+
+          npm_modules="$(npm root -g)/npm/node_modules"
+          for module in tar pacote semver; do
+            [ -f "$npm_modules/$module/package.json" ] || fail "npm does not bundle $module."
+          done
+          TARBALL="$tarball" NPM_MODULES="$npm_modules" node --input-type=commonjs - <<'JS' || fail "Tarball entries are not safe regular package files."
+          const path = require('node:path');
+          const tar = require(path.join(process.env.NPM_MODULES, 'tar'));
+          const required = new Set(['package/package.json', 'package/LICENSE', 'package/dist/cli.js', 'package/compatibility/manifest.json']);
+          (async () => {
+            const seen = new Set();
+            await tar.t({
+              file: process.env.TARBALL,
+              strict: true,
+              onwarn: (code, message) => { throw new Error(`${code}: ${message}`); },
+              onReadEntry: (entry) => {
+                const name = entry.path;
+                if (entry.type !== 'File' || !name.startsWith('package/') ||
+                    name.split('/').some((segment) => !segment || segment === '.' || segment === '..') ||
+                    seen.has(name)) throw new Error(`Unsafe tarball entry: ${name} (${entry.type}).`);
+                seen.add(name);
+              }
+            });
+            for (const name of required) if (!seen.has(name)) throw new Error(`Missing ${name}.`);
+          })().catch((error) => { console.error(`::error::${error.message}`); process.exitCode = 1; });
+          JS
+
+          manifest="$(TARBALL="$tarball" NPM_MODULES="$npm_modules" node --input-type=commonjs - <<'JS'
+          const { mkdtempSync, rmSync } = require('node:fs');
+          const path = require('node:path');
+          const pacote = require(path.join(process.env.NPM_MODULES, 'pacote'));
+          const cache = mkdtempSync(path.join(process.env.RUNNER_TEMP, 'browserjack-pacote-'));
+          pacote.manifest(path.resolve(process.env.TARBALL), { cache, fullMetadata: true, fullReadJson: true })
+            .then(({ name, version, publishConfig }) => console.log(JSON.stringify({ name, version, publishConfig })))
+            .catch((error) => { console.error(`::error::${error.message}`); process.exitCode = 1; })
+            .finally(() => rmSync(cache, { recursive: true, force: true }));
+          JS
+          )" || fail "npm cannot read the tarball manifest."
+          name="$(node -p 'JSON.parse(process.argv[1]).name' "$manifest")"
+          version="$(node -p 'JSON.parse(process.argv[1]).version' "$manifest")"
+          source_version="$(node -p 'require(process.argv[1]).version' "$PWD/package.json")"
+          [ "$name" = browserjack ] || fail "Tarball package name is $name."
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "Not a stable release version: $version."
+          NPM_MODULES="$npm_modules" node -e 'const path=require("node:path");const semver=require(path.join(process.env.NPM_MODULES,"semver"));if(semver.valid(process.argv[1])!==process.argv[1])process.exit(1)' "$version" || fail "npm does not accept release version $version."
+          [ "$version" = "$source_version" ] || fail "Tarball version differs from the source version."
+          [ "$(basename "$tarball")" = "browserjack-$version.tgz" ] || fail "Tarball filename differs from its version."
+          SOURCE="$PWD/package.json" MANIFEST="$manifest" node --input-type=commonjs - <<'JS' || fail "Source or tarball publishConfig differs from the reviewed policy."
+          const { readFileSync } = require('node:fs');
+          const expected = { access: 'public', provenance: true };
+          for (const config of [JSON.parse(readFileSync(process.env.SOURCE, 'utf8')).publishConfig, JSON.parse(process.env.MANIFEST).publishConfig]) {
+            if (!config || Object.keys(config).length !== 2 ||
+                config.access !== expected.access || config.provenance !== expected.provenance) process.exit(1);
+          }
+          JS
+
+          sha256="$(shasum -a 256 "$tarball" | cut -d' ' -f1)"
+          [ "$sha256" = "$(cut -d' ' -f1 "$tarball.sha256")" ] || fail "Tarball differs from the smoke-tested artifact."
+
+          # An empty successful answer is not evidence of absence. Only E404
+          # authorizes publication; all other responses stop the release.
+          status=0
+          view="$(npm view "browserjack@$version" version --json --registry=https://registry.npmjs.org/ 2>/dev/null)" || status=$?
+          if [ "$status" -eq 0 ] && [ -n "$view" ]; then
+            found="$(node -e 'try { const v=JSON.parse(process.argv[1]); if(typeof v==="string") process.stdout.write(v); } catch {}' "$view")"
+            [ "$found" = "$version" ] || fail "npm view returned an unexpected version or response."
+            publish=false
+          elif [ "$status" -ne 0 ] && [ "$(node -e 'try { process.stdout.write(JSON.parse(process.argv[1]).error?.code ?? ""); } catch {}' "$view")" = E404 ]; then
+            publish=true
+          else
+            fail "npm view failed to establish whether browserjack@$version is published (exit $status)."
+          fi
+
+          {
+            echo "publish=$publish"
+            echo "version=$version"
+            echo "sha256=$sha256"
+          } >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: [verify, release-gate]
+    if: >-
+      github.repository == 'stickerdaniel/browserjack' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.release-gate.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: browserjack-npm-release
+      cancel-in-progress: false
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/browserjack/v/${{ needs.release-gate.outputs.version }}
+    permissions:
+      id-token: write
+    steps:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.21.0
           registry-url: https://registry.npmjs.org
-          cache: npm
-      - name: Ensure npm supports trusted publishing
-        run: npm install -g npm@^11.5.1
-      - run: npm ci
-      - run: npm run check
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm run verify:versions
-      - run: npm test
-      - name: Verify tag matches package version
+          package-manager-cache: false
+      - name: Require npm with trusted publishing support
         run: |
-          tag="${GITHUB_REF_NAME#v}"
-          pkg="$(node -p "require('./package.json').version")"
-          test "$tag" = "$pkg" || {
-            echo "Tag $tag does not match package version $pkg" >&2
+          set -euo pipefail
+          npm_version="$(npm --version)"
+          printf '11.5.1\n%s\n' "$npm_version" | sort -V -C || {
+            echo "::error::npm $npm_version is older than 11.5.1, which trusted publishing requires."
             exit 1
           }
-      - run: npm publish
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: browserjack-${{ github.sha }}
+          path: ${{ runner.temp }}/release
+      - name: Publish the tested tarball
+        env:
+          RELEASE_DIR: ${{ runner.temp }}/release
+          VERSION: ${{ needs.release-gate.outputs.version }}
+          SHA256: ${{ needs.release-gate.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          tarball="$RELEASE_DIR/browserjack-$VERSION.tgz"
+          [ "$(sha256sum "$tarball" | cut -d' ' -f1)" = "$SHA256" ] || {
+            echo "::error::$tarball is not the tarball the release gate checked."
+            exit 1
+          }
+          npm publish "$tarball" --access public --ignore-scripts --registry https://registry.npmjs.org/
+          {
+            echo "Published browserjack@$VERSION"
+            echo
+            echo "Tarball sha256: \`$SHA256\`"
+          } >> "$GITHUB_STEP_SUMMARY"

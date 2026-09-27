@@ -8,7 +8,10 @@ workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
 cd "$root"
-tarball="$workdir/$(npm pack --pack-destination "$workdir" | tail -1)"
+packdir="${BROWSERJACK_ARTIFACT_DIR:-$workdir}"
+mkdir -p "$packdir"
+packdir="$(cd "$packdir" && pwd -P)"
+tarball="$packdir/$(npm pack --pack-destination "$packdir" | tail -1)"
 
 cd "$workdir"
 npm init -y > /dev/null
@@ -22,5 +25,9 @@ status_exit=$?
 set -e
 test "$status_exit" -eq 2
 node -e "const r = require('./status.json'); if (r.installed !== false) process.exit(1)"
+
+if [ -n "${BROWSERJACK_ARTIFACT_DIR:-}" ]; then
+  shasum -a 256 "$tarball" > "$tarball.sha256"
+fi
 
 echo "pack:check ok ($(basename "$tarball"))"

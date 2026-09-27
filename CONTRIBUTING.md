@@ -9,7 +9,7 @@ npm install
 npm run verify   # typecheck + lint + format check + tests
 ```
 
-`npm run verify` must pass before every pull request. CI runs tests and CLI smoke checks on macOS with Node.js 22 and 24, plus quality and package checks on Node.js 24.
+`npm run verify` must pass before every pull request. CI runs tests and CLI smoke checks on macOS with Node.js 22 and 24, plus quality and package checks on Node.js 24. Release changes also run actionlint and pack a tested tarball without publishing credentials.
 
 Individual steps:
 
@@ -32,6 +32,10 @@ node dist/cli.js doctor --live   # requires a supported ChatGPT.app
 ## Adding a compatibility entry
 
 New ChatGPT.app builds verify themselves through the one-time runtime self-test, so most updates need no manifest change. Manifest entries remain useful as pre-verified defaults: to propose one, open an issue with the `doctor --json` output (redact your username in paths). Maintainers verify the new browser-client hash against an OpenAI-signed installation before extending the manifest.
+
+## Releasing
+
+Bump the version with `npm version <version> --no-git-tag-version`, then update the plugin manifest, the pinned setup skill, and the dated changelog entry. Run `npm run verify` and open a PR. A merge to `main` publishes the tested tarball if npm does not already have that version. The publish job uses the `npm` environment and trusted publishing, without an npm token or a checkout. After npm confirms the release, tag the published merge commit with `v<version>`; tags do not start another publish.
 
 ## Pull requests
 
