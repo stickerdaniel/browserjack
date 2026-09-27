@@ -98,7 +98,7 @@ export async function runLiveProbe(appOverride?: string): Promise<DiscoveredRunt
             arguments: {
               code: `var bridgeDoctorClient = await import(${JSON.stringify(
                 browserClientUrl,
-              )}); await bridgeDoctorClient.setupBrowserRuntime({ globals: globalThis }); var bridgeDoctorBackends = await agent.browsers.list(); bridgeDoctorBackends.length`,
+              )}); var bridgeDoctorRuntime = await bridgeDoctorClient.setupBrowserRuntime({ globals: globalThis }); if (bridgeDoctorRuntime != null) globalThis.agent = bridgeDoctorRuntime; var bridgeDoctorBackends = await agent.browsers.list(); bridgeDoctorBackends.length`,
               title: "Verify browser runtime",
             },
             _meta: {

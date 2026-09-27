@@ -41,16 +41,51 @@ function sanitizedParentEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+function runtimeEnv(runtime: DiscoveredRuntime): Record<string, string> {
+  return {
+    NODE_REPL_NODE_MODULE_DIRS: runtime.nodeModulesPath,
+    NODE_REPL_NODE_PATH: runtime.nodePath,
+    NODE_REPL_TRUSTED_CODE_PATHS: runtime.chromePluginPath,
+    NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S: runtime.browserClientSha256,
+    // ChatGPT.app 26.814+ moved browser control into a trusted RPC service
+    // that browser-client.mjs reaches through nodeRepl.rpc("browser", ...).
+    ...(runtime.browserServicePath === undefined
+      ? {}
+      : { NODE_REPL_TRUSTED_SERVICES: JSON.stringify({ browser: runtime.browserServicePath }) }),
+    BROWSER_USE_AVAILABLE_BACKENDS: process.env.BROWSER_USE_AVAILABLE_BACKENDS ?? "chrome",
+    CODEX_HOME: runtime.codexHome,
+    CODEX_CLI_PATH: runtime.codexPath,
+  };
+}
+
+// JSON string escapes are valid TOML basic-string escapes, except that TOML
+// also forbids a literal DEL.
+function tomlString(value: string): string {
+  return JSON.stringify(value).replaceAll("\u007f", "\\u007f");
+}
+
+// codex sandbox merges this override into shell_environment_policy from
+// CODEX_HOME/config.toml, where ChatGPT.app writes its own NODE_REPL_* values.
+// `set` wins over configured values and excludes; include_only runs after
+// `set`, so it is cleared to keep a configured allowlist from dropping them.
+function environmentPolicy(env: Record<string, string>): string {
+  const entries = Object.entries(env).map(([key, value]) => `${key}=${tomlString(value)}`);
+  return `shell_environment_policy={inherit="all",include_only=[],set={${entries.join(",")}}}`;
+}
+
 // Pure assembly of the sandbox invocation from an already-verified runtime.
 // Kept side-effect free so the env and argument invariants stay testable
 // without a real ChatGPT.app.
 export function composeLaunch(runtime: DiscoveredRuntime): RuntimeLaunch {
+  const env = runtimeEnv(runtime);
   return {
     command: runtime.codexPath,
     args: [
       "sandbox",
       "-c",
       permissionProfile(runtime),
+      "-c",
+      environmentPolicy(env),
       "-P",
       "claude_browser_node_repl",
       "-C",
@@ -60,16 +95,7 @@ export function composeLaunch(runtime: DiscoveredRuntime): RuntimeLaunch {
       runtime.nodeReplPath,
       "--disable-sandbox",
     ],
-    env: {
-      ...sanitizedParentEnv(),
-      NODE_REPL_NODE_MODULE_DIRS: runtime.nodeModulesPath,
-      NODE_REPL_NODE_PATH: runtime.nodePath,
-      NODE_REPL_TRUSTED_CODE_PATHS: runtime.chromePluginPath,
-      NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S: runtime.browserClientSha256,
-      BROWSER_USE_AVAILABLE_BACKENDS: process.env.BROWSER_USE_AVAILABLE_BACKENDS ?? "chrome",
-      CODEX_HOME: runtime.codexHome,
-      CODEX_CLI_PATH: runtime.codexPath,
-    },
+    env: { ...sanitizedParentEnv(), ...env },
     runtime,
   };
 }

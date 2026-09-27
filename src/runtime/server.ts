@@ -50,7 +50,8 @@ function addBrowserRuntimeInstructions(line: string, browserClientUrl: string): 
   const bridgeInstructions = [
     "This bridge uses OpenAI's verified browser client from:",
     browserClientUrl,
-    "Import that exact URL and call setupBrowserRuntime({ globals: globalThis }) before using agent.browsers.",
+    "Before using agent.browsers, run this once per session:",
+    `\`if (globalThis.agent?.browsers == null) { const { setupBrowserRuntime } = await import(${JSON.stringify(browserClientUrl)}); const runtime = await setupBrowserRuntime({ globals: globalThis }); if (runtime != null) globalThis.agent = runtime; }\``,
   ].join(" ");
 
   return `${JSON.stringify({
@@ -118,7 +119,11 @@ export async function runBridge(appOverride?: string): Promise<number> {
       child.stdin.end();
     }
   })();
+  let childExited = false;
   void inputForwarding.catch((error: unknown) => {
+    if (childExited && isJsonObject(error) && error.code === "ERR_STREAM_PREMATURE_CLOSE") {
+      return;
+    }
     inputFailure = error;
     forwardSignal(child.pid, "SIGTERM");
   });
@@ -126,7 +131,11 @@ export async function runBridge(appOverride?: string): Promise<number> {
   const exitEvent: unknown[] = await once(child, "exit");
   const code = typeof exitEvent[0] === "number" ? exitEvent[0] : null;
   const signal = typeof exitEvent[1] === "string" ? exitEvent[1] : null;
-  process.stdin.pause();
+  // Ends the pending stdin read so a signal-initiated exit does not wait for
+  // the MCP client to close its end of the pipe. The read then rejects with a
+  // premature close, which is expected once the child is gone.
+  childExited = true;
+  process.stdin.destroy();
 
   process.removeListener("SIGINT", onSigint);
   process.removeListener("SIGTERM", onSigterm);

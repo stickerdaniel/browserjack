@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Compatibility manifest entry for ChatGPT.app 26.814.41407, verified end to end against Chrome and Helium
+
+### Fixed
+
+- ChatGPT.app 26.814 support: discovery reads the new `extension-ids.json`, the native-host check accepts any OpenAI extension origin, and the runtime serves OpenAI's `browser-service.mjs` as the trusted `browser` RPC service that `browser-client.mjs` now requires
+- The runtime env is pinned via `shell_environment_policy`, so the `NODE_REPL_*` values ChatGPT.app writes into `~/.codex/config.toml` can no longer override the verified trust roots
+- The browser bootstrap assigns the runtime returned by `setupBrowserRuntime()`, which no longer installs `agent` as a global
+- `run` exits on SIGTERM instead of waiting for the MCP client to close stdin
+
 ## [0.3.0] - 2026-07-24
 
 ### Changed

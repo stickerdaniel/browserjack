@@ -21,11 +21,13 @@ const runtime = {
   nodeModulesPath: "/Applications/ChatGPT.app/Contents/Resources/cua_node/node_modules",
   chromePluginPath: "/Applications/ChatGPT.app/Contents/Resources/plugins/chrome",
   pluginVersion: "1.0.0",
-  extensionId: "abcdefghijklmnop",
+  extensionIds: ["abcdefghijklmnop"],
   nativeHostName: "com.openai.chatgpt",
   nativeHostPath: "/Applications/ChatGPT.app/host",
   browserClientPath: "/Applications/ChatGPT.app/scripts/browser-client.mjs",
   browserClientSha256: "d".repeat(64),
+  browserServicePath:
+    "/Applications/ChatGPT.app/Contents/Resources/plugins/chrome/scripts/browser-service.mjs",
   codexHome: "/Users/example/.codex",
 };
 
@@ -52,9 +54,51 @@ test("trusts only the verified plugin directory and client hash", () => {
   assert.equal(launch.env.CODEX_HOME, runtime.codexHome);
 });
 
+function configOverrides(launch) {
+  return launch.args.flatMap((arg, index) => (launch.args[index - 1] === "-c" ? [arg] : []));
+}
+
+test("serves the verified browser service from the plugin directory", () => {
+  const launch = composeLaunch(runtime);
+  assert.deepEqual(JSON.parse(launch.env.NODE_REPL_TRUSTED_SERVICES), {
+    browser: runtime.browserServicePath,
+  });
+  const { browserServicePath: _omitted, ...legacy } = runtime;
+  assert.equal(composeLaunch(legacy).env.NODE_REPL_TRUSTED_SERVICES, undefined);
+});
+
+test("pins the runtime env over any shell_environment_policy in config.toml", () => {
+  const launch = composeLaunch(runtime);
+  const policy = configOverrides(launch).find((arg) => arg.startsWith("shell_environment_policy="));
+  assert.ok(policy, "missing shell_environment_policy override");
+  for (const key of [
+    "NODE_REPL_TRUSTED_CODE_PATHS",
+    "NODE_REPL_TRUSTED_SERVICES",
+    "BROWSER_USE_AVAILABLE_BACKENDS",
+    "CODEX_HOME",
+  ]) {
+    assert.ok(policy.includes(`${key}=${JSON.stringify(launch.env[key])}`), `${key} is not pinned`);
+  }
+});
+
+test("a configured include_only allowlist cannot drop the pinned env", () => {
+  const policy = configOverrides(composeLaunch(runtime)).find((arg) =>
+    arg.startsWith("shell_environment_policy="),
+  );
+  assert.match(policy, /include_only=\[\]/);
+});
+
+test("escapes DEL, which TOML forbids in basic strings", () => {
+  const policy = configOverrides(
+    composeLaunch({ ...runtime, codexHome: "/Users/example/odd\u007fdir/.codex" }),
+  ).find((arg) => arg.startsWith("shell_environment_policy="));
+  assert.ok(!policy.includes("\u007f"), "literal DEL in TOML override");
+  assert.ok(policy.includes('CODEX_HOME="/Users/example/odd\\u007fdir/.codex"'));
+});
+
 test("sandbox profile limits writes to CODEX_HOME and temp dirs", () => {
   const launch = composeLaunch(runtime);
-  const profile = launch.args[launch.args.indexOf("-c") + 1];
+  const profile = configOverrides(launch).find((arg) => arg.startsWith("permissions."));
   assert.match(profile, /"\/"="read"/);
   assert.ok(profile.includes(`${JSON.stringify(runtime.codexHome)}="write"`));
   assert.match(profile, /":tmpdir"="write"/);

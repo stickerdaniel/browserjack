@@ -7,11 +7,12 @@ import test from "node:test";
 import { inspectNativeHost } from "../dist/discovery/native-host.js";
 
 const EXTENSION_ID = "hehggadaopoacecdllhhajmbjkdcmajg";
+const EDGE_EXTENSION_ID = "odlomjlbamekndcpllcnffbgeohgkmjh";
 const HOST_NAME = "com.openai.codexextension";
 
 function runtime(codexHome) {
   return {
-    extensionId: EXTENSION_ID,
+    extensionIds: [EXTENSION_ID, EDGE_EXTENSION_ID],
     nativeHostName: HOST_NAME,
     codexHome,
   };
@@ -54,6 +55,17 @@ test("missing extension origin is untrusted", async () => {
   const result = await inspectNativeHost({ browser: "Helium", manifestPath }, runtime(dir));
   assert.equal(result.status, "untrusted");
   assert.match(result.reason, /origin/);
+});
+
+test("any OpenAI extension origin satisfies the origin check", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "browserjack-nh-"));
+  const manifestPath = await writeManifest(dir, {
+    name: HOST_NAME,
+    path: join(dir, "host"),
+    allowed_origins: [`chrome-extension://${EDGE_EXTENSION_ID}/`],
+  });
+  const result = await inspectNativeHost({ browser: "Helium", manifestPath }, runtime(dir));
+  assert.equal(result.reason, "configured native host does not exist");
 });
 
 test("a nonexistent configured host is untrusted", async () => {

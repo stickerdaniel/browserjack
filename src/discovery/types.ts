@@ -12,11 +12,12 @@ export interface DiscoveredRuntime {
   nodeModulesPath: string;
   chromePluginPath: string;
   pluginVersion: string;
-  extensionId: string;
+  extensionIds: string[];
   nativeHostName: string;
   nativeHostPath: string;
   browserClientPath: string;
   browserClientSha256: string;
+  browserServicePath?: string;
   cachedPluginPath?: string;
   cachedBrowserClientPath?: string;
   cachedBrowserClientSha256?: string;
