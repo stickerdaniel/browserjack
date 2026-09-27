@@ -9,6 +9,13 @@
   "rangeStrategy": "pin",
   "packageRules": [
     {
+      "description": "Keep the supported Node engine range as a project compatibility decision",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["engines"],
+      "matchDepNames": ["node"],
+      "enabled": false
+    },
+    {
       "description": "Group the VoidZero toolchain (oxlint, oxfmt, tsgolint move quickly)",
       "groupName": "oxc toolchain",
       "matchPackageNames": ["oxlint", "oxfmt", "oxlint-tsgolint"]
