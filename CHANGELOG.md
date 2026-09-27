@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-27
+
+### Changed
+
+- Publish new versions from `main` through a credential-isolated job that uploads the tarball CI tested; tags no longer trigger publishing
+
 ### Added
 
 - Compatibility manifest entry for ChatGPT.app 26.814.41407, verified end to end against Chrome and Helium
@@ -62,7 +68,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Disabled-by-default Claude Code plugin with setup, doctor, and browser skills
 - stderr secret redaction and strict stdout protocol purity
 
-[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/stickerdaniel/browserjack/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/stickerdaniel/browserjack/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/stickerdaniel/browserjack/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/stickerdaniel/browserjack/releases/tag/v0.1.0
