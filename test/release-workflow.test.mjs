@@ -155,7 +155,9 @@ function assertReleaseBoundary(value) {
       assert.ok(job.steps.every((step) => !/\bnpm\s+publish\b/.test(step.run ?? "")));
     }
     assert.ok(
-      job.steps.every((step) => step.shell === undefined && step.continue_on_error === undefined),
+      job.steps.every(
+        (step) => step.shell === undefined && step["continue-on-error"] === undefined,
+      ),
     );
   }
   assert.equal(JSON.stringify(value).includes("write-all"), false);
@@ -178,6 +180,9 @@ test("release boundary rejects credential and artifact wiring changes", () => {
     },
     (v) => {
       v.jobs.verify.permissions["id-token"] = "write";
+    },
+    (v) => {
+      v.jobs.verify.steps[3]["continue-on-error"] = true;
     },
     (v) => {
       v.jobs.publish.steps[3].shell = "node";
