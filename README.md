@@ -57,14 +57,14 @@ browserjack setup        Install the runtime and register the MCP server
        --mcp-name NAME   MCP server name (default: browserjack)
 browserjack update       Reinstall this version with the recorded MCP identity
 browserjack uninstall    Remove the installation and its MCP entry
-       --keep-state      Remove only the active link and shim
+       --keep-state      Keep releases and state
 ```
 
 `doctor` and `status` exit with 2 when a check fails and 1 on an unexpected error.
 
 ## Compatibility
 
-After a ChatGPT.app update, the first start runs a one-time self-test with a real browser handshake. A build that passes starts instantly from then on. A build that fails stays blocked until a Browserjack update. If a new build misbehaves in a way the self-test misses, open a compatibility issue with your `doctor --json` output and remove your username from the paths.
+When a ChatGPT.app build is new to Browserjack, its first start runs a self-test with a real browser handshake. A build that passes starts instantly from then on. A build that fails does not start, and the next start tests it again. If a new build misbehaves in a way the self-test misses, open a compatibility issue with your `doctor --json` output and remove your username from the paths.
 
 ## Security and privacy
 
