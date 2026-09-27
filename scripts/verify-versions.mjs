@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+const { version, engines } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const escaped = version.replaceAll(".", "\\.");
 
 const failures = [];
@@ -13,6 +13,9 @@ const failures = [];
 const lock = JSON.parse(await readFile(join(root, "package-lock.json"), "utf8"));
 if (lock.version !== version || lock.packages?.[""]?.version !== version) {
   failures.push(`package-lock.json has ${lock.version}, expected ${version} (run npm install)`);
+}
+if (engines?.node !== ">=22" || lock.packages?.[""]?.engines?.node !== ">=22") {
+  failures.push("package.json and package-lock.json must support Node.js >=22");
 }
 
 const plugin = JSON.parse(await readFile(join(root, "plugin/.claude-plugin/plugin.json"), "utf8"));
