@@ -38,24 +38,28 @@ jobs:
         run: node scripts/check-chatgpt-build.mjs
         env:
           CHECK_REPORT: ${{ runner.temp }}/report.md
-          FORCE_CHECK: ${{ github.event_name != 'schedule' && '1' || '' }}
-      - name: Open an issue for the breaking build
-        if: steps.check.outputs.failed == 'true' && github.event_name != 'pull_request'
+      - name: Open an issue
+        if: failure() && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          OUTCOME: ${{ steps.check.outputs.outcome }}
           REPORT: ${{ runner.temp }}/report.md
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           VERSION: ${{ steps.check.outputs.version }}
         run: |
-          title="ChatGPT.app $VERSION breaks Browserjack"
-          open="$(gh issue list --state open --search "\"$title\" in:title" --json title --jq "map(select(.title == \"$title\")) | length")"
-          if [ "$open" = "0" ]; then
-            gh issue create --title "$title" --body-file "$REPORT"
+          if [ "$OUTCOME" = "breaks" ]; then
+            title="ChatGPT.app $VERSION breaks Browserjack"
+          else
+            title="ChatGPT build check cannot run"
           fi
-      - name: Fail on a breaking build
-        if: steps.check.outputs.failed == 'true'
-        env:
-          VERSION: ${{ steps.check.outputs.version }}
-        run: |
-          echo "::error::ChatGPT.app $VERSION breaks Browserjack"
-          exit 1
+          [ -f "$REPORT" ] || echo "The check failed before it wrote a report." > "$REPORT"
+          echo "" >> "$REPORT"
+          echo "Run: $RUN_URL" >> "$REPORT"
+          issue="$(gh issue list --state all --search "\"$title\" in:title" --json number,title,state \
+            --jq "map(select(.title == \"$title\")) | first | \"\(.number) \(.state)\"")"
+          case "$issue" in
+            *" OPEN") ;;
+            *" CLOSED") gh issue reopen "${issue% *}" --comment "$(cat "$REPORT")" ;;
+            *) gh issue create --title "$title" --body-file "$REPORT" ;;
+          esac

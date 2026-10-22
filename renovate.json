@@ -11,9 +11,15 @@
   "platformAutomerge": false,
   "packageRules": [
     {
-      "description": "Merge non-major updates once all checks pass; the package has no runtime dependencies and merging never publishes",
-      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "description": "Merge non-major updates once all checks pass; the package has no runtime dependencies",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest", "lockFileMaintenance"],
       "automerge": true
+    },
+    {
+      "description": "Actions in the release workflow run with the npm publishing identity; review them by hand",
+      "matchManagers": ["github-actions"],
+      "matchFileNames": [".github/workflows/release.yml"],
+      "automerge": false
     },
     {
       "description": "Keep the supported Node engine range as a project compatibility decision",

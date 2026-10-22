@@ -1,14 +1,14 @@
 // Checks the newest ChatGPT.app build from OpenAI's update feed against the
 // built bridge (dist/), so a breaking app release surfaces before users hit it.
 // Runs `doctor` with the downloaded bundle, ignoring native-host checks (CI has
-// no browser), then the live cold-start probe. Builds already in the bundled
-// compatibility manifest are skipped unless FORCE_CHECK is set. Writes a Markdown summary to
-// $CHECK_REPORT and sets `version` and `failed` in $GITHUB_OUTPUT.
+// no browser), then the live cold-start probe. Writes a Markdown summary to
+// $CHECK_REPORT, sets `version` and `outcome` (pass, breaks or error) in
+// $GITHUB_OUTPUT, and exits 1 unless the build passes.
 //
 //   npm run build && node scripts/check-chatgpt-build.mjs
 //   CHATGPT_APP_PATH=/Applications/ChatGPT.app node scripts/check-chatgpt-build.mjs
 import { execFile } from "node:child_process";
-import { appendFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -22,13 +22,15 @@ async function latestBuild() {
   if (!response.ok) {
     throw new Error(`Appcast request failed: HTTP ${response.status}`);
   }
-  const item = /<item>([\s\S]*?)<\/item>/.exec(await response.text())?.[1] ?? "";
-  const version = /<sparkle:shortVersionString>([^<]+)</.exec(item)?.[1];
-  const url = /<enclosure[^>]*\burl="([^"]+\.zip)"/.exec(item)?.[1];
-  if (!version || !url) {
-    throw new Error("Appcast has no ChatGPT.app build with a zip download");
+  // Items are newest first; take the newest with a full arm64 zip.
+  for (const [, item] of (await response.text()).matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+    const version = /<sparkle:shortVersionString>([^<]+)</.exec(item)?.[1];
+    const url = /<enclosure[^>]*\burl="([^"]+arm64[^"]*\.zip)"/.exec(item)?.[1];
+    if (version && url) {
+      return { version, url };
+    }
   }
-  return { version, url };
+  throw new Error("Appcast has no ChatGPT.app build with an arm64 zip download");
 }
 
 async function downloadApp(url) {
@@ -77,37 +79,47 @@ async function output(values) {
   }
 }
 
-const manifest = JSON.parse(await readFile(join(root, "compatibility/manifest.json"), "utf8"));
+async function report(lines) {
+  const text = lines.join("\n");
+  console.log(text);
+  if (process.env.CHECK_REPORT) {
+    await writeFile(process.env.CHECK_REPORT, `${text}\n`);
+  }
+}
+
 const local = process.env.CHATGPT_APP_PATH;
-const build = local ? { version: "local", url: local } : await latestBuild();
+let build = { version: "unknown", url: "" };
+try {
+  build = local ? { version: "local", url: local } : await latestBuild();
+  const appPath = local ?? (await downloadApp(build.url));
+  const checks = (await doctor(appPath)).filter((check) => !check.id.startsWith("native-host"));
+  // Discovery falls back to installed copies when --app does not resolve, so
+  // confirm the report describes the bundle under test.
+  const app = checks.find((check) => check.id === "chatgpt-app");
+  if (app?.status === "pass" && app.details?.path !== (await realpath(appPath))) {
+    throw new Error(`doctor inspected ${app.details?.path} instead of ${appPath}`);
+  }
+  if (checks.every((check) => check.status !== "failure")) {
+    checks.push(await liveProbe(appPath));
+  }
 
-if (
-  !local &&
-  !process.env.FORCE_CHECK &&
-  manifest.entries.some((entry) => entry.appVersion === build.version)
-) {
-  console.log(`ChatGPT.app ${build.version} is already in the compatibility manifest`);
-  await output({ version: build.version, failed: false });
-  process.exit(0);
+  const failed = checks.some((check) => check.status === "failure");
+  await report([
+    `ChatGPT.app ${build.version} ${failed ? "breaks" : "passes"} the Browserjack build check.`,
+    "",
+    ...checks.map((check) => `- ${check.status}: ${check.summary}`),
+    "",
+    `Download: ${build.url}`,
+  ]);
+  await output({ version: build.version, outcome: failed ? "breaks" : "pass" });
+  process.exitCode = failed ? 1 : 0;
+} catch (error) {
+  // A feed or download problem is not evidence that the build breaks Browserjack.
+  await report([
+    `The Browserjack build check could not evaluate ChatGPT.app ${build.version}.`,
+    "",
+    `Error: ${error instanceof Error ? error.message : String(error)}`,
+  ]);
+  await output({ version: build.version, outcome: "error" });
+  process.exitCode = 1;
 }
-
-const appPath = local ?? (await downloadApp(build.url));
-const checks = (await doctor(appPath)).filter((check) => !check.id.startsWith("native-host"));
-const discovered = checks.every((check) => check.status !== "failure");
-if (discovered) {
-  checks.push(await liveProbe(appPath));
-}
-
-const failed = checks.some((check) => check.status === "failure");
-const report = [
-  `ChatGPT.app ${build.version} ${failed ? "breaks" : "passes"} the Browserjack build check.`,
-  "",
-  ...checks.map((check) => `- ${check.status}: ${check.summary}`),
-  "",
-  `Download: ${build.url}`,
-].join("\n");
-console.log(report);
-if (process.env.CHECK_REPORT) {
-  await writeFile(process.env.CHECK_REPORT, `${report}\n`);
-}
-await output({ version: build.version, failed });
