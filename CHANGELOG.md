@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-22
+
+### Added
+
+- Compatibility manifest entry for ChatGPT.app 26.1016.61520, verified end to end against Helium
+
+### Fixed
+
+- ChatGPT.app 26.924 support: discovery finds the Codex CLI in the nested, separately signed `codex-cli/CodexCLI.app` and verifies its OpenAI signature; older builds keep using `Resources/codex`
+
 ## [0.3.1] - 2026-09-27
 
 ### Changed
@@ -68,7 +78,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Disabled-by-default Claude Code plugin with setup, doctor, and browser skills
 - stderr secret redaction and strict stdout protocol purity
 
-[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/stickerdaniel/browserjack/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/stickerdaniel/browserjack/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/stickerdaniel/browserjack/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/stickerdaniel/browserjack/compare/v0.1.0...v0.2.0
