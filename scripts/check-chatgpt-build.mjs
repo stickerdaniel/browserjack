@@ -26,6 +26,9 @@ async function latestBuild() {
   for (const [, item] of (await response.text()).matchAll(/<item>([\s\S]*?)<\/item>/g)) {
     const version = /<sparkle:shortVersionString>([^<]+)</.exec(item)?.[1];
     const url = /<enclosure[^>]*\burl="([^"]+arm64[^"]*\.zip)"/.exec(item)?.[1];
+    if (version && !/^\d+(\.\d+)+$/.test(version)) {
+      throw new Error(`Appcast has an unexpected version string: ${JSON.stringify(version)}`);
+    }
     if (version && url) {
       return { version, url };
     }

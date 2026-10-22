@@ -35,6 +35,8 @@ jobs:
       - run: npm ci
       - run: npm run build
       - id: check
+        # Leaves time inside the job limit for the issue step after a hang.
+        timeout-minutes: 20
         run: node scripts/check-chatgpt-build.mjs
         env:
           CHECK_REPORT: ${{ runner.temp }}/report.md
@@ -56,8 +58,9 @@ jobs:
           [ -f "$REPORT" ] || echo "The check failed before it wrote a report." > "$REPORT"
           echo "" >> "$REPORT"
           echo "Run: $RUN_URL" >> "$REPORT"
-          issue="$(gh issue list --state all --search "\"$title\" in:title" --json number,title,state \
-            --jq "map(select(.title == \"$title\")) | first | \"\(.number) \(.state)\"")"
+          # Prefer an open exact-title issue, then a closed one to reopen.
+          issue="$(gh issue list --state all --search "\"$title\" in:title" --json number,title,state |
+            jq -r --arg title "$title" 'map(select(.title == $title)) | sort_by(.state != "OPEN") | first | "\(.number) \(.state)"')"
           case "$issue" in
             *" OPEN") ;;
             *" CLOSED") gh issue reopen "${issue% *}" --comment "$(cat "$REPORT")" ;;
