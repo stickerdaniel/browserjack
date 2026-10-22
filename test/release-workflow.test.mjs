@@ -17,9 +17,14 @@ const sourceManifest = JSON.parse(await readFile(join(root, "package.json"), "ut
 const gate = workflow.jobs["release-gate"].steps.find((step) => step.id === "gate").run;
 const mainOnly =
   "github.repository == 'stickerdaniel/browserjack' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'";
-const setupNode = "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
-const downloadArtifact = "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c";
 const artifactName = "browserjack-${{ github.sha }}";
+
+// Renovate bumps action SHAs and the Node version, so the boundary requires
+// full-SHA pins of first-party actions, one ref per action across jobs, and one
+// Node version shared by every job, instead of fixed values.
+function pinned(uses) {
+  return uses?.replace(/@[0-9a-f]{40}$/, "@<sha>");
+}
 
 function normalized(value) {
   return value.replaceAll(/\s+/g, " ").trim();
@@ -36,10 +41,20 @@ function assertReleaseBoundary(value) {
   const { verify, publish } = value.jobs;
   const releaseGate = value.jobs["release-gate"];
   assert.deepEqual(Object.keys(value.jobs).toSorted(), ["publish", "release-gate", "verify"]);
+  const refs = new Map();
+  for (const job of Object.values(value.jobs)) {
+    for (const { uses } of job.steps.filter((step) => step.uses)) {
+      assert.match(uses, /^actions\/[a-z-]+@[0-9a-f]{40}$/);
+      const [action] = uses.split("@");
+      assert.equal(refs.get(action) ?? uses, uses);
+      refs.set(action, uses);
+    }
+  }
   assert.deepEqual(verify.permissions, { contents: "read" });
   assert.equal(verify.concurrency, undefined);
   assert.equal(verify.steps[0].with["persist-credentials"], false);
-  assert.equal(verify.steps[1].with["node-version"], "24.21.0");
+  const nodeVersion = verify.steps[1].with["node-version"];
+  assert.match(nodeVersion, /^\d+\.\d+\.\d+$/);
   assert.equal(verify.steps[1].with["package-manager-cache"], false);
   assert.equal(verify.steps[3].env.BROWSERJACK_RELEASE_GATE_TEST, "required");
   assert.equal(
@@ -58,12 +73,12 @@ function assertReleaseBoundary(value) {
   assert.deepEqual(releaseGate.permissions, { contents: "read" });
   assert.equal(releaseGate.concurrency, undefined);
   assert.equal(releaseGate.steps[0].with["persist-credentials"], false);
-  assert.equal(releaseGate.steps[1].with["node-version"], "24.21.0");
+  assert.equal(releaseGate.steps[1].with["node-version"], nodeVersion);
   assert.deepEqual(releaseGate.steps[2].with, {
     name: artifactName,
     path: "${{ runner.temp }}/release",
   });
-  assert.equal(releaseGate.steps[2].uses, downloadArtifact);
+  assert.equal(pinned(releaseGate.steps[2].uses), "actions/download-artifact@<sha>");
   assert.deepEqual(releaseGate.steps[3].env, { RELEASE_DIR: "${{ runner.temp }}/release" });
   assert.deepEqual(releaseGate.outputs, {
     publish: "${{ steps.gate.outputs.publish }}",
@@ -96,11 +111,11 @@ function assertReleaseBoundary(value) {
     "cancel-in-progress": false,
   });
   assert.deepEqual(
-    publish.steps.map((step) => step.uses ?? `run: ${step.name}`),
+    publish.steps.map((step) => pinned(step.uses) ?? `run: ${step.name}`),
     [
-      setupNode,
+      "actions/setup-node@<sha>",
       "run: Require npm with trusted publishing support",
-      downloadArtifact,
+      "actions/download-artifact@<sha>",
       "run: Publish the tested tarball",
     ],
   );
@@ -114,7 +129,7 @@ function assertReleaseBoundary(value) {
     ],
   );
   assert.deepEqual(publish.steps[0].with, {
-    "node-version": "24.21.0",
+    "node-version": nodeVersion,
     "registry-url": "https://registry.npmjs.org",
     "package-manager-cache": false,
   });
@@ -195,6 +210,18 @@ test("release boundary rejects credential and artifact wiring changes", () => {
     },
     (v) => {
       v.on.push.tags = ["v*"];
+    },
+    (v) => {
+      v.jobs.publish.steps[0].uses = "actions/setup-node@v7";
+    },
+    (v) => {
+      v.jobs.verify.steps[5].uses = `other/upload-artifact@${"a".repeat(40)}`;
+    },
+    (v) => {
+      v.jobs.publish.steps[2].uses = `actions/download-artifact@${"b".repeat(40)}`;
+    },
+    (v) => {
+      v.jobs.publish.steps[0].with["node-version"] = "24";
     },
   ]) {
     const changed = structuredClone(workflow);
