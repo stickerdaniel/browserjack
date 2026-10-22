@@ -11,6 +11,7 @@ const EXPECTED_BUNDLE_ID = "com.openai.codex";
 const EXPECTED_TEAM_ID = "2DC432GLL2";
 const PLIST_BUDDY = "/usr/libexec/PlistBuddy";
 const CODESIGN = "/usr/bin/codesign";
+const CACHE_ESCAPE = "Chrome plugin cache symlink escapes its cache root";
 
 interface CuaManifest {
   nodePath: string;
@@ -101,7 +102,7 @@ function parseCodesignDetails(output: string): {
   const identifier = /^Identifier=(.+)$/m.exec(output)?.[1];
   const teamId = /^TeamIdentifier=(.+)$/m.exec(output)?.[1];
   if (!identifier || !teamId) {
-    throw new Error("Unable to read ChatGPT.app code-signing identity");
+    throw new Error("Unable to read code-signing identity");
   }
   return { identifier, teamId };
 }
@@ -128,15 +129,37 @@ async function findNativeHost(chromePluginPath: string): Promise<string> {
   return nativeHost;
 }
 
-function assertContained(root: string, candidate: string): void {
+function assertContained(root: string, candidate: string, message: string): void {
   const containment = relative(root, candidate);
   if (
     containment.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) ||
     containment === ".." ||
     isAbsolute(containment)
   ) {
-    throw new Error("Chrome plugin cache symlink escapes its cache root");
+    throw new Error(message);
   }
+}
+
+// ChatGPT.app 26.924 moved the Codex CLI from Resources/codex into a nested,
+// separately signed Resources/codex-cli/CodexCLI.app. Older builds only ship
+// the former.
+async function findCodexCli(appPath: string, resourcesRoot: string): Promise<string> {
+  const nested = join(resourcesRoot, "codex-cli", "CodexCLI.app", "Contents", "MacOS", "codex");
+  if (!(await exists(nested))) {
+    return realpath(join(resourcesRoot, "codex"));
+  }
+
+  const codexPath = await realpath(nested);
+  assertContained(appPath, codexPath, "Codex CLI escapes the verified ChatGPT.app bundle");
+  await runCommand(CODESIGN, ["--verify", "--strict", codexPath]);
+  const signature = await runCommand(CODESIGN, ["-dv", "--verbose=4", codexPath]);
+  const identity = parseCodesignDetails(`${signature.stdout}\n${signature.stderr}`);
+  if (identity.identifier !== "codex" || identity.teamId !== EXPECTED_TEAM_ID) {
+    throw new Error(
+      `Unexpected Codex CLI signing identity: ${identity.identifier} / ${identity.teamId}`,
+    );
+  }
+  return codexPath;
 }
 
 async function resolveOptionalCache(
@@ -155,7 +178,7 @@ async function resolveOptionalCache(
 
   const realBase = await realpath(cacheBase);
   const cachedPluginPath = await realpath(latest);
-  assertContained(realBase, cachedPluginPath);
+  assertContained(realBase, cachedPluginPath, CACHE_ESCAPE);
 
   const linkedBrowserClient = join(cachedPluginPath, "scripts", "browser-client.mjs");
   if (!(await exists(linkedBrowserClient))) {
@@ -163,7 +186,7 @@ async function resolveOptionalCache(
   }
 
   const cachedBrowserClientPath = await realpath(linkedBrowserClient);
-  assertContained(realBase, cachedBrowserClientPath);
+  assertContained(realBase, cachedBrowserClientPath, CACHE_ESCAPE);
 
   return {
     cachedPluginPath,
@@ -251,7 +274,7 @@ export async function discoverRuntime(appOverride?: string): Promise<DiscoveredR
     teamId: identity.teamId,
     architecture: process.arch,
     resourcesRoot,
-    codexPath: await realpath(join(resourcesRoot, "codex")),
+    codexPath: await findCodexCli(appPath, resourcesRoot),
     nodePath: await realpath(join(cuaRoot, cuaManifest.nodePath)),
     nodeReplPath: await realpath(join(cuaRoot, cuaManifest.nodeReplPath)),
     nodeModulesPath: await realpath(join(cuaRoot, cuaManifest.nodeModules)),
