@@ -19,8 +19,9 @@ const mainOnly =
   "github.repository == 'stickerdaniel/browserjack' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'";
 const artifactName = "browserjack-${{ github.sha }}";
 
-// Renovate bumps action SHAs and the Node version, so the boundary only
-// requires full-SHA pins and one Node version shared by every job.
+// Renovate bumps action SHAs and the Node version, so the boundary requires
+// full-SHA pins of first-party actions, one ref per action across jobs, and one
+// Node version shared by every job, instead of fixed values.
 function pinned(uses) {
   return uses?.replace(/@[0-9a-f]{40}$/, "@<sha>");
 }
@@ -40,6 +41,15 @@ function assertReleaseBoundary(value) {
   const { verify, publish } = value.jobs;
   const releaseGate = value.jobs["release-gate"];
   assert.deepEqual(Object.keys(value.jobs).toSorted(), ["publish", "release-gate", "verify"]);
+  const refs = new Map();
+  for (const job of Object.values(value.jobs)) {
+    for (const { uses } of job.steps.filter((step) => step.uses)) {
+      assert.match(uses, /^actions\/[a-z-]+@[0-9a-f]{40}$/);
+      const [action] = uses.split("@");
+      assert.equal(refs.get(action) ?? uses, uses);
+      refs.set(action, uses);
+    }
+  }
   assert.deepEqual(verify.permissions, { contents: "read" });
   assert.equal(verify.concurrency, undefined);
   assert.equal(verify.steps[0].with["persist-credentials"], false);
@@ -203,6 +213,12 @@ test("release boundary rejects credential and artifact wiring changes", () => {
     },
     (v) => {
       v.jobs.publish.steps[0].uses = "actions/setup-node@v7";
+    },
+    (v) => {
+      v.jobs.verify.steps[5].uses = `other/upload-artifact@${"a".repeat(40)}`;
+    },
+    (v) => {
+      v.jobs.publish.steps[2].uses = `actions/download-artifact@${"b".repeat(40)}`;
     },
     (v) => {
       v.jobs.publish.steps[0].with["node-version"] = "24";
