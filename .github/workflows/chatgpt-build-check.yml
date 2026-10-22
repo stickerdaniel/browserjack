@@ -1,0 +1,68 @@
+name: ChatGPT build check
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/chatgpt-build-check.yml
+      - scripts/check-chatgpt-build.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chatgpt-build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: github.repository == 'stickerdaniel/browserjack'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - id: check
+        # Leaves time inside the job limit for the issue step after a hang.
+        timeout-minutes: 20
+        run: node scripts/check-chatgpt-build.mjs
+        env:
+          CHECK_REPORT: ${{ runner.temp }}/report.md
+      - name: Open an issue
+        if: failure() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OUTCOME: ${{ steps.check.outputs.outcome }}
+          REPORT: ${{ runner.temp }}/report.md
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          if [ "$OUTCOME" = "breaks" ]; then
+            title="ChatGPT.app $VERSION breaks Browserjack"
+          else
+            title="ChatGPT build check cannot run"
+          fi
+          [ -f "$REPORT" ] || echo "The check failed before it wrote a report." > "$REPORT"
+          echo "" >> "$REPORT"
+          echo "Run: $RUN_URL" >> "$REPORT"
+          # Prefer an open exact-title issue, then a closed one to reopen.
+          issue="$(gh issue list --state all --search "\"$title\" in:title" --json number,title,state |
+            jq -r --arg title "$title" 'map(select(.title == $title)) | sort_by(.state != "OPEN") | first | "\(.number) \(.state)"')"
+          case "$issue" in
+            *" OPEN") ;;
+            *" CLOSED") gh issue reopen "${issue% *}" --comment "$(cat "$REPORT")" ;;
+            *) gh issue create --title "$title" --body-file "$REPORT" ;;
+          esac
