@@ -8,7 +8,13 @@
   ],
   "rangeStrategy": "pin",
   "npmrc": "force=true",
+  "platformAutomerge": false,
   "packageRules": [
+    {
+      "description": "Merge non-major updates once all checks pass; the package has no runtime dependencies and merging never publishes",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true
+    },
     {
       "description": "Keep the supported Node engine range as a project compatibility decision",
       "matchManagers": ["npm"],
