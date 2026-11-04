@@ -16,6 +16,10 @@ Expected right after a ChatGPT.app update: the next `run` (or `doctor --live`) p
 
 A running `run` process can survive an app update, so a connected status from an old process does not prove that a fresh start will work. Restart Claude Code after every app update; the new process runs doctor's checks again on startup.
 
+## Tab commands fail after a browser extension update
+
+The browser extension updates from the Chrome Web Store, independently of ChatGPT.app. A newer extension can expect fields that an older app does not send. Extension 1.26.1102 with ChatGPT.app 26.1021 failed `tab.goto` and `tab.close` with `Cannot read properties of undefined (reading 'timeoutMs')`, while `agent.browsers.list()` and `tabs.new()` still worked. Update ChatGPT.app, open it once, and restart the MCP client.
+
 ## status reports a broken Node.js path
 
 The installed shim pins the exact Node.js executable used at install time. A Homebrew or nvm upgrade can move or remove it. Run `npx browserjack setup` (or `npx browserjack update`) again to rewrite the shim against the current Node.js.
