@@ -49,19 +49,21 @@ export function outdatedAppNotice(installed: string, newest: string): string {
   return `ChatGPT.app ${installed} is older than the newest release ${newest}. OpenAI's browser extension updates on its own and can require a newer app. Update ChatGPT.app, open it once, then restart this MCP server.`;
 }
 
-const CACHE_MS = 24 * 60 * 60 * 1000;
+const SUCCESS_CACHE_MS = 24 * 60 * 60 * 1000;
+const FAILURE_CACHE_MS = 10 * 60 * 1000;
 
-// Returns a cached lookup for long-running bridges: one feed request per day at
-// most, retried on the next call after a network failure. Resolves to a notice
-// when the installed app is outdated, otherwise to null. The short default
-// timeout bounds how long a failed tool result waits for its notice.
+// Returns a cached lookup for a long-running bridge process: a successful feed
+// read is reused for 24 hours, a failed one for 10 minutes, so a stalled feed
+// delays at most one failed tool result by the short default timeout. Resolves
+// to a notice when the installed app is outdated, otherwise to null.
 export function createOutdatedAppCheck(
   installed: string,
   fetchNewest: () => Promise<AppcastBuild> = () => fetchNewestBuild(3_000),
+  now: () => number = Date.now,
 ): () => Promise<string | null> {
-  let cached: { at: number; notice: string | null } | undefined;
+  let cached: { until: number; notice: string | null } | undefined;
   return async () => {
-    if (cached && Date.now() - cached.at < CACHE_MS) {
+    if (cached && now() < cached.until) {
       return cached.notice;
     }
     try {
@@ -69,10 +71,10 @@ export function createOutdatedAppCheck(
       const notice = isOlderVersion(installed, version)
         ? outdatedAppNotice(installed, version)
         : null;
-      cached = { at: Date.now(), notice };
-      return notice;
+      cached = { until: now() + SUCCESS_CACHE_MS, notice };
     } catch {
-      return null;
+      cached = { until: now() + FAILURE_CACHE_MS, notice: null };
     }
+    return cached.notice;
   };
 }

@@ -57,19 +57,33 @@ test("names the newer release when the installed app is outdated", async () => {
   );
 });
 
-test("reads the feed once per day and retries after a network failure", async () => {
+test("reads the feed once per day and retries a failure after ten minutes", async () => {
+  const minute = 60 * 1000;
+  let clock = 0;
   let calls = 0;
-  const check = createOutdatedAppCheck("26.1021.31345", async () => {
-    calls += 1;
-    if (calls === 1) {
-      throw new Error("offline");
-    }
-    return parseNewestBuild(appcast);
-  });
+  const check = createOutdatedAppCheck(
+    "26.1021.31345",
+    async () => {
+      calls += 1;
+      if (calls === 1) {
+        throw new Error("offline");
+      }
+      return parseNewestBuild(appcast);
+    },
+    () => clock,
+  );
   assert.equal(await check(), null);
+  clock = 9 * minute;
+  assert.equal(await check(), null);
+  assert.equal(calls, 1);
+  clock = 10 * minute;
   assert.notEqual(await check(), null);
+  clock = 23 * 60 * minute;
   await check();
   assert.equal(calls, 2);
+  clock = 10 * minute + 24 * 60 * minute;
+  await check();
+  assert.equal(calls, 3);
 });
 
 test("appends the notice to a failed tool result", async () => {
