@@ -8,7 +8,7 @@ Explain the trust boundary before installation: the bridge can control authentic
 For a published release, install an exact reviewed version:
 
 ```bash
-npx --yes browserjack@0.3.2 setup --client plugin --scope user
+npx --yes browserjack@0.3.3 setup --client plugin --scope user
 ```
 
 For a source checkout, run:

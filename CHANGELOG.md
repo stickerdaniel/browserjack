@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-04
+
+### Added
+
+- Compatibility manifest entry for ChatGPT.app 26.1029.61003, verified end to end against Helium
+- Troubleshooting entry for tab commands that fail after the browser extension updates ahead of ChatGPT.app
+
 ## [0.3.2] - 2026-10-22
 
 ### Added
@@ -78,7 +85,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Disabled-by-default Claude Code plugin with setup, doctor, and browser skills
 - stderr secret redaction and strict stdout protocol purity
 
-[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/stickerdaniel/browserjack/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/stickerdaniel/browserjack/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/stickerdaniel/browserjack/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/stickerdaniel/browserjack/compare/v0.2.0...v0.3.0
