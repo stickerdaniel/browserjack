@@ -18,7 +18,7 @@ A running `run` process can survive an app update, so a connected status from an
 
 ## Tab commands fail after a browser extension update
 
-The browser extension updates from the Chrome Web Store, independently of ChatGPT.app. A newer extension can expect fields that an older app does not send. Extension 1.26.1102 with ChatGPT.app 26.1021 failed `tab.goto` and `tab.close` with `Cannot read properties of undefined (reading 'timeoutMs')`, while `agent.browsers.list()` and `tabs.new()` still worked. Update ChatGPT.app, open it once, and restart the MCP client.
+The browser extension updates from the Chrome Web Store, independently of ChatGPT.app. A newer extension can expect fields that an older app does not send. Extension 1.26.1102 with ChatGPT.app 26.1021 failed `tab.goto` and `tab.close` with `Cannot read properties of undefined (reading 'timeoutMs')`, while `agent.browsers.list()` and `tabs.new()` still worked. Update ChatGPT.app, open it once, and restart the MCP client. `doctor` warns when a newer ChatGPT.app exists, and `run` appends the same hint to failed tool results.
 
 ## status reports a broken Node.js path
 

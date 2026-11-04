@@ -68,7 +68,7 @@ When a ChatGPT.app build is new to Browserjack, its first start runs a self-test
 
 ## Security and privacy
 
-Each launch runs the checks in the diagram. The sandbox lets the runtime write only to `CODEX_HOME` and temp directories. Browserjack has no telemetry and logs no browser content, cookies, tokens, or form data. Whatever the MCP client requests does enter that client's conversation. Details are in [docs/security.md](docs/security.md) and [docs/privacy.md](docs/privacy.md). Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
+Each launch runs the checks in the diagram. The sandbox lets the runtime write only to `CODEX_HOME` and temp directories. Browserjack has no telemetry, reads only OpenAI's public app update feed, and logs no browser content, cookies, tokens, or form data. Whatever the MCP client requests does enter that client's conversation. Details are in [docs/security.md](docs/security.md) and [docs/privacy.md](docs/privacy.md). Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
 ## FAQ
 

@@ -1,3 +1,4 @@
+import { fetchNewestBuild, isOlderVersion } from "../compat/latest.js";
 import { assertCachedClientConsistent, findCompatibilityEntry } from "../compat/manifest.js";
 import { findVerifiedBuild } from "../compat/verified.js";
 import { discoverRuntime } from "../discovery/app.js";
@@ -65,6 +66,31 @@ async function nativeManifestChecks(runtime: DiscoveredRuntime): Promise<CheckRe
   }
 
   return checks;
+}
+
+// Offline machines get no check: an unreachable feed says nothing about the app.
+async function appUpdateChecks(runtime: DiscoveredRuntime): Promise<CheckResult[]> {
+  let newest: string;
+  try {
+    newest = (await fetchNewestBuild()).version;
+  } catch {
+    return [];
+  }
+  return [
+    isOlderVersion(runtime.appVersion, newest)
+      ? {
+          id: "app-update",
+          status: "warning",
+          summary: `ChatGPT.app ${runtime.appVersion} is older than the newest release ${newest}`,
+          remediation:
+            "OpenAI's browser extension updates on its own and can require a newer app. Update ChatGPT.app, open it once, then restart your MCP client.",
+        }
+      : {
+          id: "app-update",
+          status: "pass",
+          summary: `ChatGPT.app ${runtime.appVersion} is the newest release`,
+        },
+  ];
 }
 
 export async function runDoctor(appOverride?: string): Promise<DoctorReport> {
@@ -161,6 +187,7 @@ export async function runDoctor(appOverride?: string): Promise<DoctorReport> {
       );
     }
 
+    checks.push(...(await appUpdateChecks(runtime)));
     checks.push(...(await nativeManifestChecks(runtime)));
   } catch (error) {
     checks.push({

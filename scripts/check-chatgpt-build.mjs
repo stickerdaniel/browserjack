@@ -13,28 +13,8 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-const APPCAST = "https://persistent.oaistatic.com/codex-app-prod/appcast.xml";
 const root = join(import.meta.dirname, "..");
 const run = promisify(execFile);
-
-async function latestBuild() {
-  const response = await fetch(APPCAST);
-  if (!response.ok) {
-    throw new Error(`Appcast request failed: HTTP ${response.status}`);
-  }
-  // Items are newest first; take the newest with a full arm64 zip.
-  for (const [, item] of (await response.text()).matchAll(/<item>([\s\S]*?)<\/item>/g)) {
-    const version = /<sparkle:shortVersionString>([^<]+)</.exec(item)?.[1];
-    const url = /<enclosure[^>]*\burl="([^"]+arm64[^"]*\.zip)"/.exec(item)?.[1];
-    if (version && !/^\d+(\.\d+)+$/.test(version)) {
-      throw new Error(`Appcast has an unexpected version string: ${JSON.stringify(version)}`);
-    }
-    if (version && url) {
-      return { version, url };
-    }
-  }
-  throw new Error("Appcast has no ChatGPT.app build with an arm64 zip download");
-}
 
 async function downloadApp(url) {
   const dir = await mkdtemp(join(process.env.RUNNER_TEMP ?? tmpdir(), "chatgpt-"));
@@ -93,7 +73,8 @@ async function report(lines) {
 const local = process.env.CHATGPT_APP_PATH;
 let build = { version: "unknown", url: "" };
 try {
-  build = local ? { version: "local", url: local } : await latestBuild();
+  const { fetchNewestBuild } = await import(join(root, "dist/compat/latest.js"));
+  build = local ? { version: "local", url: local } : await fetchNewestBuild();
   const appPath = local ?? (await downloadApp(build.url));
   const checks = (await doctor(appPath)).filter((check) => !check.id.startsWith("native-host"));
   // Discovery falls back to installed copies when --app does not resolve, so

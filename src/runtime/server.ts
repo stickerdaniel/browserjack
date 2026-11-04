@@ -5,12 +5,14 @@ import { finished } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 
 import { ensureBuildCompatible } from "../compat/ensure.js";
+import { createOutdatedAppCheck } from "../compat/latest.js";
 import { runLiveProbe } from "../doctor/live.js";
 import { isJsonObject } from "../lib/json.js";
 import { createRuntimeLaunch } from "./launch.js";
 import { readLines } from "./lines.js";
 import { createTurnState, injectTurnMetadata } from "./metadata.js";
 import { RedactingTransform } from "./redact.js";
+import { annotateToolError } from "./tool-errors.js";
 
 const MAX_MCP_LINE_BYTES = 16 * 1024 * 1024;
 
@@ -63,11 +65,16 @@ function addBrowserRuntimeInstructions(line: string, browserClientUrl: string): 
   })}\n`;
 }
 
-async function forwardChildOutput(output: Readable, browserClientUrl: string): Promise<void> {
+async function forwardChildOutput(
+  output: Readable,
+  browserClientUrl: string,
+  outdatedAppNotice: () => Promise<string | null>,
+): Promise<void> {
   for await (const line of readLines(output, MAX_MCP_LINE_BYTES)) {
     await writeWithBackpressure(
       process.stdout,
-      addBrowserRuntimeInstructions(line, browserClientUrl),
+      (await annotateToolError(line, outdatedAppNotice)) ??
+        addBrowserRuntimeInstructions(line, browserClientUrl),
     );
   }
 }
@@ -97,7 +104,11 @@ export async function runBridge(appOverride?: string): Promise<number> {
 
   const browserClientUrl = pathToFileURL(launch.runtime.browserClientPath).href;
   let stdoutFailure: unknown;
-  const stdoutForwarding = forwardChildOutput(child.stdout, browserClientUrl);
+  const stdoutForwarding = forwardChildOutput(
+    child.stdout,
+    browserClientUrl,
+    createOutdatedAppCheck(launch.runtime.appVersion),
+  );
   void stdoutForwarding.catch((error: unknown) => {
     // A forwarding failure (e.g. an oversized MCP line) must tear down the child,
     // otherwise the bridge would linger with a dead stdout while the child runs.
