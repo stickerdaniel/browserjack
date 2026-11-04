@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
+### Added
+
+- `doctor` warns when a newer ChatGPT.app is available, and `run` appends that hint to failed tool results. OpenAI's browser extension updates on its own and can require a newer app.
+
 ## [0.3.3] - 2026-11-04
 
 ### Added
@@ -85,7 +91,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Disabled-by-default Claude Code plugin with setup, doctor, and browser skills
 - stderr secret redaction and strict stdout protocol purity
 
-[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/stickerdaniel/browserjack/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/stickerdaniel/browserjack/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/stickerdaniel/browserjack/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/stickerdaniel/browserjack/compare/v0.3.0...v0.3.1

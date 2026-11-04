@@ -1,6 +1,6 @@
 # Privacy
 
-Browserjack has no telemetry and makes no network connections of its own. It must not log browser payloads, cookies, tokens, file contents, or form values; stderr diagnostics additionally pass through a secret-redaction filter.
+Browserjack has no telemetry. Its only network request is a plain GET of OpenAI's public ChatGPT.app update feed (`persistent.oaistatic.com/codex-app-prod/appcast.xml`). `doctor` sends it on every run; `run` sends it after a failed tool call, at most once a day, to tell the agent when ChatGPT.app is outdated. The request carries no Browserjack data. It must not log browser payloads, cookies, tokens, file contents, or form values; stderr diagnostics additionally pass through a secret-redaction filter.
 
 The bridge does not request or export browser credentials, but it acts through your existing authenticated browser sessions. What that means in practice:
 
