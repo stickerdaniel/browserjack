@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-04",
+  "generatedAt": "2026-11-09",
   "entries": [
     {
       "bundleId": "com.openai.codex",
@@ -33,6 +33,14 @@
       "teamId": "2DC432GLL2",
       "architectures": ["arm64"],
       "browserClientSha256": "6704e0f3b0c94d3e041a22488550d4c29e6252a934163d0aa539a7d947d5d17b"
+    },
+    {
+      "bundleId": "com.openai.codex",
+      "appVersion": "26.1103.60933",
+      "pluginVersion": "26.1103.60933",
+      "teamId": "2DC432GLL2",
+      "architectures": ["arm64"],
+      "browserClientSha256": "becbcc75697f519cad57e002267f14581dd759d235021411ed61637b961ce469"
     }
   ]
 }

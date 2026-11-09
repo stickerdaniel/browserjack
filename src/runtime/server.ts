@@ -12,7 +12,7 @@ import { createRuntimeLaunch } from "./launch.js";
 import { readLines } from "./lines.js";
 import { createTurnState, injectTurnMetadata } from "./metadata.js";
 import { RedactingTransform } from "./redact.js";
-import { annotateToolError } from "./tool-errors.js";
+import { annotateToolError, browserUnavailableNotice } from "./tool-errors.js";
 
 const MAX_MCP_LINE_BYTES = 16 * 1024 * 1024;
 
@@ -70,10 +70,14 @@ async function forwardChildOutput(
   browserClientUrl: string,
   outdatedAppNotice: () => Promise<string | null>,
 ): Promise<void> {
+  const notices = async (errorText: string): Promise<string[]> =>
+    [browserUnavailableNotice(errorText), await outdatedAppNotice()].filter(
+      (notice) => notice !== null,
+    );
   for await (const line of readLines(output, MAX_MCP_LINE_BYTES)) {
     await writeWithBackpressure(
       process.stdout,
-      (await annotateToolError(line, outdatedAppNotice)) ??
+      (await annotateToolError(line, notices)) ??
         addBrowserRuntimeInstructions(line, browserClientUrl),
     );
   }
