@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createOutdatedAppCheck, isOlderVersion, parseNewestBuild } from "../dist/compat/latest.js";
-import { annotateToolError, noConnectedBrowserNotice } from "../dist/runtime/tool-errors.js";
+import { annotateToolError, browserUnavailableNotice } from "../dist/runtime/tool-errors.js";
 
 // Trimmed from OpenAI's appcast on 2026-11-04; the first item is cut down to
 // its delta enclosure to exercise the full-zip requirement.
@@ -111,17 +111,64 @@ test("leaves successful results alone without looking up a notice", async () => 
   assert.equal(await annotateToolError(failedToolLine, async () => []), null);
 });
 
-test("tells the agent to retry while no browser extension is connected", async () => {
-  // The js tool result on ChatGPT.app 26.1103 while Helium's extension had not reconnected.
-  const unavailable = failedResult("Browser is not available: chrome");
-  const line = await annotateToolError(unavailable, async (errorText) =>
-    [noConnectedBrowserNotice(errorText)].filter((notice) => notice !== null),
+test("annotates unavailable browsers without assuming an extension connection", async () => {
+  // The first result was captured from ChatGPT.app 26.1103 with an unavailable Edge backend.
+  for (const error of [
+    "Browser is not available: edge",
+    "Browser is not available: chrome",
+    "No browser is available",
+    "Browser is not available: dot",
+    "Browser is not available: 42",
+  ]) {
+    const line = await annotateToolError(failedResult(error), async (errorText) =>
+      [browserUnavailableNotice(errorText)].filter((notice) => notice !== null),
+    );
+    const { result } = JSON.parse(line ?? "null");
+    assert.equal(result.isError, true);
+    assert.deepEqual(result.content[0], { type: "text", text: error });
+    assert.match(
+      result.content.at(-1).text,
+      /^browserjack: The runtime could not find the requested browser/,
+    );
+  }
+  assert.equal(browserUnavailableNotice("Cannot read properties of undefined"), null);
+  assert.equal(browserUnavailableNotice("A page says Browser is not available: chrome"), null);
+});
+
+test("reads only text content and preserves mixed content and metadata", async () => {
+  const message = {
+    jsonrpc: "2.0",
+    id: 3,
+    result: {
+      isError: true,
+      _meta: { "codex/telemetry": { error_code: "browser_error" } },
+      content: [
+        { type: "text", text: "Browser is not available: edge" },
+        { type: "text", text: 'Reported browsers: [{"family":"chrome","id":"1"}]' },
+        { type: "image", mimeType: "image/png", data: "AA==" },
+        { type: "resource", resource: { uri: "test:log", text: "resource text" } },
+        null,
+      ],
+    },
+  };
+  const notices = ["Diagnostic", "Update notice"];
+  const output = JSON.parse(
+    await annotateToolError(JSON.stringify(message), async (text) => {
+      assert.equal(
+        text,
+        'Browser is not available: edge\nReported browsers: [{"family":"chrome","id":"1"}]\n\n\n',
+      );
+      return notices;
+    }),
   );
-  const { result } = JSON.parse(line ?? "null");
-  assert.match(
-    result.content.at(-1).text,
-    /^browserjack: The requested browser has no extension connected/,
-  );
-  assert.notEqual(noConnectedBrowserNotice("No browser is available"), null);
-  assert.equal(noConnectedBrowserNotice("Cannot read properties of undefined"), null);
+  assert.deepEqual(output, {
+    ...message,
+    result: {
+      ...message.result,
+      content: [
+        ...message.result.content,
+        ...notices.map((text) => ({ type: "text", text: `browserjack: ${text}` })),
+      ],
+    },
+  });
 });

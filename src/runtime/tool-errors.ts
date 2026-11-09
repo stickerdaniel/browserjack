@@ -1,14 +1,13 @@
 import { isJsonObject } from "../lib/json.js";
 
-// OpenAI's browser service throws these while no browser extension is connected
-// to ChatGPT.app, for example `Browser is not available: chrome`.
-const NO_CONNECTED_BROWSER = /Browser is not available: |No browser is available/;
+// OpenAI reports an unavailable browser when discovery cannot match its ID or
+// family. The error alone says nothing about app/runtime compatibility.
+const NO_AVAILABLE_BROWSER =
+  /^(?:Error: )?(?:Browser is not available: [^\r\n]+|No browser is available)$/m;
 
-// The extension retries its native-host connection every 5 seconds and, while
-// its service worker sleeps, on a 30-second alarm.
-export function noConnectedBrowserNotice(errorText: string): string | null {
-  return NO_CONNECTED_BROWSER.test(errorText)
-    ? "The requested browser has no extension connected to ChatGPT.app yet. The extension reconnects within 30 seconds after the browser starts, ChatGPT.app restarts or the Mac wakes. Retry the same call every 5 seconds for up to 30 seconds. If it still fails, confirm that the browser is running and the ChatGPT extension is enabled in it."
+export function browserUnavailableNotice(errorText: string): string | null {
+  return NO_AVAILABLE_BROWSER.test(errorText)
+    ? "The runtime could not find the requested browser. A disconnected extension or an unavailable browser ID can cause this error. This error alone does not establish that ChatGPT.app is incompatible."
     : null;
 }
 
@@ -35,7 +34,9 @@ export async function annotateToolError(
     return null;
   }
   const errorText = message.result.content
-    .map((item) => (isJsonObject(item) && typeof item.text === "string" ? item.text : ""))
+    .map((item) =>
+      isJsonObject(item) && item.type === "text" && typeof item.text === "string" ? item.text : "",
+    )
     .join("\n");
   const texts = await notices(errorText);
   if (texts.length === 0) {

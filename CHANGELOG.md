@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Compatibility manifest entry for ChatGPT.app 26.1103.60933, verified end to end against Helium
-- `run` appends a retry hint to `Browser is not available` and `No browser is available` errors. The browser extension needs up to 30 seconds to reconnect after a browser start, an app restart or a wake from sleep.
+- `run` explains unavailable-browser errors without treating them as proof of an incompatible ChatGPT.app release or replaying failed tool calls.
 
 ## [0.4.0] - 2026-11-04
 

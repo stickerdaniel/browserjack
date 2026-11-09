@@ -12,7 +12,7 @@ import { createRuntimeLaunch } from "./launch.js";
 import { readLines } from "./lines.js";
 import { createTurnState, injectTurnMetadata } from "./metadata.js";
 import { RedactingTransform } from "./redact.js";
-import { annotateToolError, noConnectedBrowserNotice } from "./tool-errors.js";
+import { annotateToolError, browserUnavailableNotice } from "./tool-errors.js";
 
 const MAX_MCP_LINE_BYTES = 16 * 1024 * 1024;
 
@@ -71,7 +71,7 @@ async function forwardChildOutput(
   outdatedAppNotice: () => Promise<string | null>,
 ): Promise<void> {
   const notices = async (errorText: string): Promise<string[]> =>
-    [noConnectedBrowserNotice(errorText), await outdatedAppNotice()].filter(
+    [browserUnavailableNotice(errorText), await outdatedAppNotice()].filter(
       (notice) => notice !== null,
     );
   for await (const line of readLines(output, MAX_MCP_LINE_BYTES)) {
