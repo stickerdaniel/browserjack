@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createOutdatedAppCheck, isOlderVersion, parseNewestBuild } from "../dist/compat/latest.js";
-import { annotateToolError } from "../dist/runtime/tool-errors.js";
+import { annotateToolError, noConnectedBrowserNotice } from "../dist/runtime/tool-errors.js";
 
 // Trimmed from OpenAI's appcast on 2026-11-04; the first item is cut down to
 // its delta enclosure to exercise the full-zip requirement.
@@ -21,15 +21,16 @@ const appcast = `<rss><channel>
 </item>
 </channel></rss>`;
 
+function failedResult(text) {
+  return JSON.stringify({
+    jsonrpc: "2.0",
+    id: 3,
+    result: { content: [{ type: "text", text }], isError: true },
+  });
+}
+
 // The js tool result a goto produced on ChatGPT.app 26.1021 with extension 1.26.1102.
-const failedToolLine = JSON.stringify({
-  jsonrpc: "2.0",
-  id: 3,
-  result: {
-    content: [{ type: "text", text: "Cannot read properties of undefined (reading 'timeoutMs')" }],
-    isError: true,
-  },
-});
+const failedToolLine = failedResult("Cannot read properties of undefined (reading 'timeoutMs')");
 
 test("takes the newest feed item that has a full arm64 zip", () => {
   assert.deepEqual(parseNewestBuild(appcast), {
@@ -87,7 +88,7 @@ test("reads the feed once per day and retries a failure after ten minutes", asyn
 });
 
 test("appends the notice to a failed tool result", async () => {
-  const line = await annotateToolError(failedToolLine, async () => "Update ChatGPT.app.");
+  const line = await annotateToolError(failedToolLine, async () => ["Update ChatGPT.app."]);
   const { result } = JSON.parse(line ?? "null");
   assert.equal(result.isError, true);
   assert.deepEqual(result.content.at(-1), {
@@ -107,5 +108,20 @@ test("leaves successful results alone without looking up a notice", async () => 
   });
   assert.equal(await annotateToolError(success, unexpectedNotice), null);
   assert.equal(await annotateToolError("not json", unexpectedNotice), null);
-  assert.equal(await annotateToolError(failedToolLine, async () => null), null);
+  assert.equal(await annotateToolError(failedToolLine, async () => []), null);
+});
+
+test("tells the agent to retry while no browser extension is connected", async () => {
+  // The js tool result on ChatGPT.app 26.1103 while Helium's extension had not reconnected.
+  const unavailable = failedResult("Browser is not available: chrome");
+  const line = await annotateToolError(unavailable, async (errorText) =>
+    [noConnectedBrowserNotice(errorText)].filter((notice) => notice !== null),
+  );
+  const { result } = JSON.parse(line ?? "null");
+  assert.match(
+    result.content.at(-1).text,
+    /^browserjack: The requested browser has no extension connected/,
+  );
+  assert.notEqual(noConnectedBrowserNotice("No browser is available"), null);
+  assert.equal(noConnectedBrowserNotice("Cannot read properties of undefined"), null);
 });

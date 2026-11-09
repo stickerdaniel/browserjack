@@ -28,6 +28,8 @@ The installed shim pins the exact Node.js executable used at install time. A Hom
 
 `doctor --live` verifies that the runtime starts and that `agent.browsers.list()` works; zero connected backends is not a runtime failure. Make sure the ChatGPT/Codex extension is installed and enabled in the browser profile you intend to use, and that ChatGPT.app is running.
 
+A tool call then fails with `Browser is not available: chrome` or `No browser is available`. The extension reconnects to ChatGPT.app on its own: it retries every 5 seconds and, while its service worker sleeps, every 30 seconds. Right after the browser starts, ChatGPT.app restarts, or the Mac wakes, the first call can fail before that reconnect. `run` appends a hint to these errors that tells the agent to retry for up to 30 seconds.
+
 ## The browser asks for site or automation permission
 
 OpenAI's extension has its own permission layer, independent of Claude Code's permission mode. When a site prompts, choose `Allow for this site` to persist an origin-specific entry. Avoid `Allow for all sites` or any global never-ask setting; Browserjack does not enable those and you should not either.

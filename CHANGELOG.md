@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-09
+
+### Added
+
+- Compatibility manifest entry for ChatGPT.app 26.1103.60933, verified end to end against Helium
+- `run` appends a retry hint to `Browser is not available` and `No browser is available` errors. The browser extension needs up to 30 seconds to reconnect after a browser start, an app restart or a wake from sleep.
+
 ## [0.4.0] - 2026-11-04
 
 ### Added
@@ -91,7 +98,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Disabled-by-default Claude Code plugin with setup, doctor, and browser skills
 - stderr secret redaction and strict stdout protocol purity
 
-[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/stickerdaniel/browserjack/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/stickerdaniel/browserjack/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/stickerdaniel/browserjack/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/stickerdaniel/browserjack/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/stickerdaniel/browserjack/compare/v0.3.1...v0.3.2
