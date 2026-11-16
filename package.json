@@ -67,9 +67,9 @@
   },
   "devDependencies": {
     "@types/node": "26.6.5",
-    "oxfmt": "0.76.0",
-    "oxlint": "1.91.0",
-    "oxlint-tsgolint": "7.0.2006",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "oxlint-tsgolint": "7.0.2007",
     "typescript": "7.0.2",
     "yaml": "2.9.1"
   },
